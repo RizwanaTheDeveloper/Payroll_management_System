@@ -302,6 +302,10 @@ ALTER TABLE employees
 ALTER TABLE employees
   ALTER COLUMN advance DROP NOT NULL;
 
+ALTER TABLE employees
+  ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS bank_branch VARCHAR(100);
+
 ALTER TABLE payslips
   ADD COLUMN IF NOT EXISTS hra NUMERIC(12,2) NOT NULL DEFAULT 0;
 
@@ -338,6 +342,19 @@ INSERT INTO salary_history (employee_id, effective_from, ctc, basic, hra, specia
 SELECT id, '2000-01-01', ctc, basic, hra, special_allowance, lta, other_allowances,
   epf, professional_tax, 'Opening structure when salary tracking was enabled'
 FROM employees e WHERE role = 'employee' AND NOT EXISTS (SELECT 1 FROM salary_history h WHERE h.employee_id = e.id);
+
+UPDATE salary_history h
+SET effective_from = e.joining_date
+FROM employees e
+WHERE h.employee_id = e.id
+  AND h.reason = 'Initial salary structure'
+  AND e.joining_date IS NOT NULL
+  AND h.effective_from <> e.joining_date
+  AND NOT EXISTS (
+    SELECT 1 FROM salary_history existing
+    WHERE existing.employee_id = h.employee_id
+      AND existing.effective_from = e.joining_date
+  );
 
 ALTER TABLE payslips ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'draft'
   CHECK (status IN ('draft', 'reviewed', 'finalized'));
@@ -383,3 +400,106 @@ ALTER TABLE payslips
 
 ALTER TABLE payslips
   ADD COLUMN IF NOT EXISTS advance NUMERIC(12,2) NOT NULL DEFAULT 0;
+
+-- Lookup indexes for per-employee and per-period queries (reports, payroll, leave).
+CREATE INDEX IF NOT EXISTS payslips_period_idx ON payslips(year, month);
+CREATE INDEX IF NOT EXISTS attendance_work_date_idx ON attendance(work_date);
+CREATE INDEX IF NOT EXISTS leaves_employee_idx ON leaves(employee_id, start_date);
+
+-- =========================================================
+-- MANAGER ROLE
+-- Managers are payroll employees who also approve leave for their direct reports.
+-- (The new enum value is not referenced elsewhere in this file, so this is safe
+-- inside the single transaction used by db:init on PostgreSQL 12+.)
+-- =========================================================
+
+ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'manager';
+
+ALTER TABLE employees
+  ADD COLUMN IF NOT EXISTS manager_id INT REFERENCES employees(id) ON DELETE SET NULL;
+
+ALTER TABLE employees DROP CONSTRAINT IF EXISTS employees_manager_not_self;
+ALTER TABLE employees
+  ADD CONSTRAINT employees_manager_not_self CHECK (manager_id IS NULL OR manager_id <> id);
+
+CREATE INDEX IF NOT EXISTS employees_manager_idx ON employees(manager_id);
+
+ALTER TABLE leaves ADD COLUMN IF NOT EXISTS decided_by INT REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE leaves ADD COLUMN IF NOT EXISTS decided_at TIMESTAMPTZ;
+
+-- Manager recommendation on loan and salary-advance requests (admin gives final approval).
+ALTER TABLE advances ADD COLUMN IF NOT EXISTS manager_decision VARCHAR(20)
+  CHECK (manager_decision IN ('recommended', 'declined'));
+ALTER TABLE advances ADD COLUMN IF NOT EXISTS manager_note TEXT;
+ALTER TABLE advances ADD COLUMN IF NOT EXISTS manager_decided_by INT REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE advances ADD COLUMN IF NOT EXISTS manager_decided_at TIMESTAMPTZ;
+
+-- =========================================================
+-- MANAGER PAYROLL WORKFLOW
+-- Manager calculates (draft) -> submits -> admin approves (finalized) -> manager publishes.
+-- Employees only see payslips that have been published.
+-- =========================================================
+
+ALTER TABLE payslips DROP CONSTRAINT IF EXISTS payslips_status_check;
+ALTER TABLE payslips ADD CONSTRAINT payslips_status_check
+  CHECK (status IN ('draft', 'submitted', 'reviewed', 'finalized'));
+
+ALTER TABLE payslips ADD COLUMN IF NOT EXISTS submitted_by INT REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE payslips ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
+ALTER TABLE payslips ADD COLUMN IF NOT EXISTS published_by INT REFERENCES employees(id) ON DELETE SET NULL;
+
+-- Payslips that were already finalized before publishing existed stay visible to employees.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'payslips' AND column_name = 'published_at'
+  ) THEN
+    ALTER TABLE payslips ADD COLUMN published_at TIMESTAMPTZ;
+    UPDATE payslips SET published_at = COALESCE(finalized_at, updated_at, NOW()) WHERE status = 'finalized';
+  END IF;
+END $$;
+
+-- Accounts created with a generated password must choose their own at first sign-in.
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Server-side browser sessions (the browser holds only an opaque httpOnly cookie).
+CREATE TABLE IF NOT EXISTS sessions (
+  id SERIAL PRIMARY KEY,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  employee_id INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  user_agent TEXT
+);
+CREATE INDEX IF NOT EXISTS sessions_employee_idx ON sessions(employee_id);
+CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions(expires_at);
+
+-- =========================================================
+-- APPROVAL WORKFLOWS: attendance audit trail and regularization requests
+-- =========================================================
+
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_by INT REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS attendance_requests (
+  id SERIAL PRIMARY KEY,
+  employee_id INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  work_date DATE NOT NULL,
+  day_type VARCHAR(10) NOT NULL DEFAULT 'full' CHECK (day_type IN ('full', 'half')),
+  reason TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'approved', 'rejected', 'cancelled')),
+  decided_by INT REFERENCES employees(id) ON DELETE SET NULL,
+  decided_at TIMESTAMPTZ,
+  decision_note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS attendance_requests_one_pending
+  ON attendance_requests(employee_id, work_date) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS attendance_requests_status_idx ON attendance_requests(status, created_at);
+CREATE INDEX IF NOT EXISTS attendance_requests_employee_idx ON attendance_requests(employee_id);
+
+-- Optional check-in / check-out times on attendance correction requests.
+ALTER TABLE attendance_requests ADD COLUMN IF NOT EXISTS check_in_time TIME;
+ALTER TABLE attendance_requests ADD COLUMN IF NOT EXISTS check_out_time TIME;

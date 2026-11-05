@@ -8,7 +8,7 @@ const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', cur
 const currentMonth = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }).slice(0, 7);
 const monthName = (value) => new Date(`${value.slice(0, 7)}-01T12:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 const statusName = (value) => value.charAt(0).toUpperCase() + value.slice(1);
-const eventNames = { created: 'Request added', approve: 'Approved', reject: 'Rejected', disburse: 'Payment recorded', pause: 'Recovery paused', resume: 'Recovery resumed' };
+const eventNames = { created: 'Request added', approve: 'Approved', reject: 'Rejected', disburse: 'Payment recorded', pause: 'Recovery paused', resume: 'Recovery resumed', manager_recommend: 'Manager recommended', manager_decline: 'Manager declined' };
 const advanceStatuses = ['all', 'pending', 'approved', 'active', 'paused', 'rejected', 'completed'];
 
 function AdvanceStatusFilter({ value, onChange }) {
@@ -256,7 +256,7 @@ export default function AdvancesPage({ admin = false }) {
       <div className="advance-table-wrap"><table className="advance-table"><thead><tr><th>Employee ID</th><th>Name</th><th>Advance</th><th>Pending</th><th>Previous advances</th><th>Action</th></tr></thead><tbody>
         {loading ? <tr><td colSpan={6} className="loan-empty">Loading employees...</td></tr> : error ? <tr><td colSpan={6} className="loan-empty">Employees unavailable. Refresh to retry.</td></tr> : !visibleEmployees.length ? <tr><td colSpan={6} className="loan-empty">No matching employees.</td></tr> : visibleEmployees.map((employee) => <tr key={employee.employee_id}>
           <td>{employee.emp_code || employee.employee_id}</td><td>{employee.name}{employee.is_active === false && <small>Inactive</small>}</td><td>{money(employee.advance)}</td><td>{money(employee.pending_advance)}</td><td><button type="button" className="loan-button secondary" aria-label={`View previous advances for ${employee.name}`} aria-expanded={employeeId === String(employee.employee_id)} aria-controls="advance-history" onClick={() => openHistory(employee.employee_id)}>Previous advances</button></td>
-          <td><div className="advance-actions"><button type="button" className="loan-button" disabled={employee.is_active === false || !!dialog} onClick={() => openAdd(employee.employee_id)}>Add advance</button></div></td>
+          <td><div className="advance-actions"><button type="button" className="loan-button secondary" disabled={employee.is_active === false || !!dialog} onClick={() => openAdd(employee.employee_id)}>Add advance</button></div></td>
         </tr>)}
       </tbody></table></div><p className="advance-help">Advance shows the approved balance remaining to recover. Pending requests are shown separately. Click Previous advances to view an employee's advance history.</p>
     </section>}

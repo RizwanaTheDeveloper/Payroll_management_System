@@ -61,7 +61,7 @@ const capitalize = (value) => {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
-export default function Leaves() {
+export default function Leaves({ team = false }) {
   const [list, setList] = useState([]);
   const [tab, setTab] = useState('pending');
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ export default function Leaves() {
       setLoading(true);
       setError('');
 
-      const response = await api.get('/leaves');
+      const response = await api.get(team ? '/leaves/team' : '/leaves');
 
       setList(
         Array.isArray(response.data)
@@ -205,8 +205,8 @@ export default function Leaves() {
           align-items: center;
           justify-content: center;
           border-radius: 12px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           flex-shrink: 0;
         }
 
@@ -268,8 +268,8 @@ export default function Leaves() {
         }
 
         .leaves-summary-icon.all {
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .leaves-summary-icon.pending {
@@ -337,8 +337,8 @@ export default function Leaves() {
           align-items: center;
           justify-content: center;
           border-radius: 9px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .leaves-card-heading h3 {
@@ -388,10 +388,10 @@ export default function Leaves() {
         }
 
         .leaves-tab.active {
-          border-color: #2563eb;
-          background: #2563eb;
+          border-color: #4f46e5;
+          background: #4f46e5;
           color: #fff;
-          box-shadow: 0 4px 10px rgba(37, 99, 235, 0.16);
+          box-shadow: 0 4px 10px rgba(79, 70, 229, 0.16);
         }
 
         .leaves-tab-count {
@@ -444,7 +444,7 @@ export default function Leaves() {
 
         .leaves-table {
           width: 100%;
-          min-width: 1000px;
+          min-width: 980px;
           border-collapse: collapse;
           table-layout: fixed;
         }
@@ -480,39 +480,39 @@ export default function Leaves() {
 
         .leaves-table th:nth-child(1),
         .leaves-table td:nth-child(1) {
-          width: 17%;
+          width: 15%;
         }
 
         .leaves-table th:nth-child(2),
         .leaves-table td:nth-child(2) {
-          width: 11%;
+          width: 8%;
         }
 
         .leaves-table th:nth-child(3),
         .leaves-table td:nth-child(3),
         .leaves-table th:nth-child(4),
         .leaves-table td:nth-child(4) {
-          width: 11%;
+          width: 9%;
         }
 
         .leaves-table th:nth-child(5),
         .leaves-table td:nth-child(5) {
-          width: 7%;
+          width: 5%;
         }
 
         .leaves-table th:nth-child(6),
         .leaves-table td:nth-child(6) {
-          width: 19%;
+          width: 18%;
         }
 
         .leaves-table th:nth-child(7),
         .leaves-table td:nth-child(7) {
-          width: 10%;
+          width: 14%;
         }
 
         .leaves-table th:nth-child(8),
         .leaves-table td:nth-child(8) {
-          width: 14%;
+          width: 22%;
         }
 
         .leave-employee {
@@ -529,8 +529,8 @@ export default function Leaves() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           flex: 0 0 34px;
         }
 
@@ -541,9 +541,8 @@ export default function Leaves() {
         .leave-employee-name {
           color: #0f172a;
           font-weight: 700;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          overflow-wrap: anywhere;
+          line-height: 1.3;
         }
 
         .leave-employee-code {
@@ -742,7 +741,7 @@ export default function Leaves() {
           height: 26px;
           margin: 0 auto 10px;
           border: 3px solid #e2e8f0;
-          border-top-color: #2563eb;
+          border-top-color: #4f46e5;
           border-radius: 50%;
           animation: leavesSpin 0.8s linear infinite;
         }
@@ -812,7 +811,7 @@ export default function Leaves() {
               <FiCalendar size={21} />
             </span>
 
-            Leave Requests
+            {team ? 'Team Leave Requests' : 'Leave Requests'}
           </h1>
 
           <p className="leaves-subtitle">
@@ -915,10 +914,10 @@ export default function Leaves() {
             </div>
 
             <div>
-              <h3>Employee Leave Requests</h3>
+              <h3>{team ? 'Requests from your team' : 'Employee Leave Requests'}</h3>
 
               <p>
-                Review and manage employee leave applications
+                {team ? 'Approve or reject leave for your direct reports' : 'Review and manage employee leave applications'}
               </p>
             </div>
           </div>
@@ -1001,7 +1000,7 @@ export default function Leaves() {
               </button>
               <button
                 type="button"
-                className="leave-action-btn"
+                className="leave-action-btn leave-cancel-btn"
                 disabled={processingId !== null}
                 onClick={() => {
                   setRejectingLeave(null);
@@ -1154,6 +1153,13 @@ export default function Leaves() {
 
                         {capitalize(leave.status)}
                       </span>
+                      {leave.status === 'pending' && (
+                        <div style={{ fontSize: 12, color: leave.escalated ? '#b42346' : '#64748b', marginTop: 4 }}>
+                          {leave.manager_name ? `With ${leave.manager_name}` : 'No manager'}
+                          {leave.waiting_days > 0 && ` · waiting ${leave.waiting_days}d`}
+                          {leave.escalated && ' · escalated'}
+                        </div>
+                      )}
                     </td>
 
                     {/* ACTION */}

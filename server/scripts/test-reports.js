@@ -173,6 +173,7 @@ async function main() {
       VALUES ($1,$2,'created','Private coworker activity','2026-09-01')`, [privateLoan, administrator]);
     await pool.query(`INSERT INTO payroll_events (employee_id,month,year,actor_id,action,reason)
       VALUES ($1,9,2026,$3,'reviewed','Private coworker payroll'),($2,9,2026,$3,'reviewed','Own payroll review')`, [newJoiner, employee, administrator]);
+    await pool.query('UPDATE payslips SET published_at = NOW() WHERE published_at IS NULL');
     await request('/my?period=2026-09', null, 401);
     await request('/my?period=2026-09', token, 403);
     await request('/my?period=2026-13', employeeToken, 400);

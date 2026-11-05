@@ -18,7 +18,6 @@ import {
 } from "react-icons/fi";
 import api from "../../api";
 import ReportCategoryDashboard from "../../components/ReportCategoryDashboard";
-import MonthNavigation from '../../components/MonthNavigation';
 import {
   buildReports,
   formatReportValue,
@@ -419,7 +418,6 @@ export default function Reports() {
         </div>
       </div>
       <div className="reports-filters">
-        <MonthNavigation period={period} onChange={(value) => { const next = new URLSearchParams(params); next.set('period', value); setParams(next); }} />
         <label>
           Report month
           <input
@@ -502,7 +500,7 @@ export default function Reports() {
               categories={reportCategories.map(([id, label]) => {
                 const categoryReports = reports.filter((r) => r.category === id);
                 const available = categoryReports.filter((r) => !r.unavailable).length;
-                return { id, label, ...categoryInfo[id], summary: available ? `${available} reports available` : 'Reports awaiting data' };
+                return { id, label, ...categoryInfo[id], summary: available ? `${available} report${available === 1 ? '' : 's'} available` : 'Reports awaiting data' };
               })}
               onOpen={(id) => { if (id === 'employees') { navigate(`/admin/reports/employees?period=${period}`); return; } setCategory(id); setSelected(""); setSearch(""); }}
             />

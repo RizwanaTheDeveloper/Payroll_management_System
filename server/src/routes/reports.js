@@ -20,13 +20,13 @@ async function getReport(req, res, employeeId = null) {
     const employees = await client.query(`SELECT id, emp_code, name,
       COALESCE(NULLIF(department, ''), 'Unassigned') AS department,
       designation, is_active, joining_date::text, resignation_date::text
-      FROM employees WHERE role = 'employee' AND ($1::int IS NULL OR id = $1) ORDER BY name`, [employeeId]);
+      FROM employees WHERE role IN ('employee', 'manager') AND ($1::int IS NULL OR id = $1) ORDER BY name`, [employeeId]);
     const payslips = await client.query(`SELECT p.*, p.paid_on::text,
       COALESCE((SELECT SUM(r.amount) FROM advance_recoveries r JOIN advances a ON a.id = r.advance_id
         WHERE r.payslip_id = p.id AND a.record_type = 'loan'), 0) AS loan_recovery
       FROM payslips p WHERE make_date(p.year, p.month, 1) >= $1::date - interval '1 month'
         AND make_date(p.year, p.month, 1) < $1::date + interval '1 month'
-        AND ($2::int IS NULL OR p.employee_id = $2)
+        AND ($2::int IS NULL OR (p.employee_id = $2 AND p.published_at IS NOT NULL))
       ORDER BY p.year, p.month, p.employee_id`, [start, employeeId]);
     const attendance = await client.query(`${attendanceWithLeavePolicy}
       SELECT id, employee_id, work_date::text, status, recorded_status, day_type, note,
@@ -77,7 +77,7 @@ async function getReport(req, res, employeeId = null) {
   } finally { client.release(); }
 }
 
-router.get('/my', authorize('employee'), asyncHandler((req, res) => getReport(req, res, req.user.id)));
+router.get('/my', authorize('employee', 'manager'), asyncHandler((req, res) => getReport(req, res, req.user.id)));
 router.get('/', authorize('admin'), asyncHandler((req, res) => getReport(req, res)));
 
 module.exports = router;

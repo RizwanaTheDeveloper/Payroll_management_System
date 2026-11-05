@@ -16,11 +16,12 @@ function inputs(body) {
 
 async function eligibleEmployees(client, input) {
   const { rows } = await client.query(`SELECT e.*, e.joining_date::text, e.resignation_date::text
-    FROM employees e WHERE role = 'employee' AND (is_active OR resignation_date IS NOT NULL)
+    FROM employees e WHERE role IN ('employee', 'manager') AND (is_active OR resignation_date IS NOT NULL)
       AND ($1::int IS NULL OR id = $1)
+      AND ($4::int IS NULL OR manager_id = $4)
       AND (joining_date IS NULL OR joining_date < make_date($3, $2, 1) + interval '1 month')
       AND (resignation_date IS NULL OR resignation_date >= make_date($3, $2, 1)) ORDER BY id`,
-  [input.employeeId, input.month, input.year]);
+  [input.employeeId, input.month, input.year, input.teamManagerId ?? null]);
   return rows;
 }
 
@@ -41,7 +42,7 @@ async function calculate(client, employee, input) {
     .map((row) => row.work_date).filter((workDate) => !unpaid.has(workDate));
   const penaltyDate = lateDates.length >= 3 ? lateDates[2] : null;
   let lateCents = 0;
-  let leaveCents = 0, missingSalary = false;
+  let leaveCents = 0, basicLossCents = 0, missingSalary = false;
   const versions = new Set();
   let current = structures[0];
   for (let day = 1; day <= days.monthDays; day++) {
@@ -53,8 +54,8 @@ async function calculate(client, employee, input) {
     versions.add(current.id);
     for (const key of EARNINGS) {
       earned[key] += cents(current[key]);
-      if (unpaid.has(workDate)) leaveCents += cents(current[key]);
-      if (workDate === penaltyDate) lateCents += cents(current[key]) / 2;
+      if (unpaid.has(workDate)) { leaveCents += cents(current[key]); if (key === 'basic') basicLossCents += cents(current[key]); }
+      if (workDate === penaltyDate) { lateCents += cents(current[key]) / 2; if (key === 'basic') basicLossCents += cents(current[key]) / 2; }
     }
   }
   const result = Object.fromEntries(EARNINGS.map((key) => [key, cash(earned[key] / days.monthDays)]));
@@ -63,8 +64,6 @@ async function calculate(client, employee, input) {
     WHERE plan.employee_id = $1 ORDER BY plan.advance_id`, [employee.id])).rows;
   const legacyAdvance = employee.joining_date?.slice(0, 7) === start.slice(0, 7) ? Number(employee.advance || 0) : 0;
   result.allowances = input.allowances;
-  result.epf = input.epf ?? Number(current?.epf || 0);
-  result.professional_tax = input.professional_tax ?? Number(current?.professional_tax || 0);
   result.advance = cash(cents(legacyAdvance) + recoveries.reduce((sum, row) => sum + cents(row.amount), 0));
   result.unpaid_leave_deduction = cash(leaveCents / days.monthDays);
   result.additional_deductions = input.deductions;
@@ -75,6 +74,11 @@ async function calculate(client, employee, input) {
     : '';
   result.deductions = cash(cents(result.unpaid_leave_deduction) + cents(input.deductions) + cents(result.late_login_deduction));
   result.gross = cash([...EARNINGS, 'allowances'].reduce((sum, key) => sum + cents(result[key]), 0));
+  // Andhra Pradesh statutory deductions on wages actually payable (after Loss Of Pay / late-login cuts).
+  const payableBasic = Math.max(0, result.basic - cash(basicLossCents / days.monthDays));
+  const payableGross = Math.max(0, result.gross - result.unpaid_leave_deduction - result.late_login_deduction);
+  result.epf = input.epf ?? Math.round(Math.min(payableBasic, 15000) * 0.12);
+  result.professional_tax = input.professional_tax ?? (payableGross > 20000 ? 200 : payableGross > 15000 ? 150 : 0);
   result.total_deductions = cash(['epf', 'professional_tax', 'advance', 'deductions'].reduce((sum, key) => sum + cents(result[key]), 0));
   result.net_pay = cash(cents(result.gross) - cents(result.total_deductions));
   result.month_days = days.monthDays;
@@ -115,11 +119,16 @@ async function generate(client, input, actorId) {
       skippedLocked++; continue;
     }
     await baseline(client, employee, actorId);
-    const values = await calculate(client, employee, input);
+    // Bulk update keeps each employee's own saved additional allowance / deduction.
+    const bulkUpdate = input.mode === 'update' && !input.employeeId && before;
+    const values = await calculate(client, employee, bulkUpdate
+      ? { ...input, allowances: Number(before.allowances || 0), deductions: Number(before.additional_deductions || 0) }
+      : input);
     if (values.missingSalary) {
       if (input.employeeId) fail(values.warnings[0]);
       skippedNoSalary++; continue;
     }
+    if (values.net_pay < 0 && bulkUpdate) { skippedNoSalary++; warnings.push({ employee_id: employee.id, name: employee.name, message: 'Deductions exceed gross earnings; payslip left unchanged.' }); continue; }
     if (values.net_pay < 0) fail(`${employee.name}: deductions exceed gross earnings. Reduce deductions before generating payroll.`);
     const columns = [...EARNINGS, 'allowances', 'epf', 'professional_tax', 'advance', 'deductions',
       'net_pay', 'unpaid_leave_deduction', 'additional_deductions', 'late_login_deduction', 'late_login_count', 'late_login_reason', 'month_days', 'employed_days', 'net_paid_days', 'calculation_snapshot'];
@@ -127,7 +136,8 @@ async function generate(client, input, actorId) {
     const after = (await client.query(`INSERT INTO payslips (employee_id, month, year, ${columns.join(',')})
       VALUES (${parameters.map((_, i) => `$${i + 1}`).join(',')})
       ON CONFLICT (employee_id, month, year) DO UPDATE SET ${columns.map((key) => `${key} = EXCLUDED.${key}`).join(',')},
-        status = 'draft', reviewed_by = NULL, reviewed_at = NULL, updated_at = NOW()
+        status = 'draft', reviewed_by = NULL, reviewed_at = NULL,
+        submitted_by = NULL, submitted_at = NULL, updated_at = NOW()
       RETURNING *`, parameters)).rows[0];
     await event(client, before, after, actorId, before ? 'updated' : 'generated');
     generated++;

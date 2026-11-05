@@ -3,6 +3,7 @@ const asyncHandler = require('./asyncHandler');
 const { authenticate, authorize } = require('../middleware/auth');
 const { LOCK } = require('./loanRecovery');
 const loanAmounts = require('./loanAmounts');
+const { ESCALATE_AFTER_DAYS } = require('./workflowPolicy');
 
 module.exports = function creditRequests(kind) {
   if (!['loan', 'salary_advance'].includes(kind)) throw new Error('Invalid credit type');
@@ -14,6 +15,7 @@ module.exports = function creditRequests(kind) {
 
   const REGISTER = `SELECT a.*, a.first_recovery::text, a.disbursed_on::text,
     e.name, e.emp_code, COALESCE(r.recovered, 0) AS recovered,
+    (SELECT name FROM employees WHERE id = a.manager_decided_by) AS manager_decided_by_name,
     CASE WHEN a.instalment_count IS NOT NULL THEN ROUND(a.amount * a.interest_percentage / 100, 2) END AS monthly_interest_amount,
     ROUND(a.amount * a.interest_percentage / 100, 2) * COALESCE(a.instalment_count, 1) AS interest_amount,
     a.amount + ROUND(a.amount * a.interest_percentage / 100, 2) * COALESCE(a.instalment_count, 1) AS total_repayable,
@@ -34,7 +36,15 @@ module.exports = function creditRequests(kind) {
     res.json(rows);
   }));
 
-  router.get('/my', authorize('employee'), asyncHandler(async (req, res) => {
+  // Manager: requests from direct reports, awaiting or carrying their recommendation.
+  router.get('/team', authorize('manager'), asyncHandler(async (req, res) => {
+    const { rows } = await pool.query(`${REGISTER}
+      AND e.manager_id = $1 AND e.is_active
+      ORDER BY (a.status = 'pending' AND a.manager_decision IS NULL) DESC, a.created_at DESC, a.id DESC`, [req.user.id]);
+    res.json(rows);
+  }));
+
+  router.get('/my', authorize('employee', 'manager'), asyncHandler(async (req, res) => {
     const { rows } = await pool.query(`${REGISTER} AND a.employee_id = $1 ORDER BY a.created_at DESC, a.id DESC`, [req.user.id]);
     res.json(rows);
   }));
@@ -48,16 +58,16 @@ module.exports = function creditRequests(kind) {
         FROM employees e
         LEFT JOIN advances a ON a.employee_id = e.id AND a.record_type = 'salary_advance'
         LEFT JOIN LATERAL (SELECT SUM(amount) AS recovered FROM advance_recoveries WHERE advance_id = a.id) r ON TRUE
-        WHERE e.role = 'employee'
+        WHERE e.role IN ('employee', 'manager')
         GROUP BY e.id ORDER BY e.emp_code, e.id`);
       res.json(rows);
     }));
   }
 
-  router.get('/:id', authorize('admin', 'employee'), asyncHandler(async (req, res) => {
+  router.get('/:id', authorize('admin', 'employee', 'manager'), asyncHandler(async (req, res) => {
     if (!/^\d+$/.test(req.params.id) || Number(req.params.id) > 2147483647) return res.status(400).json({ message: `Invalid ${label.toLowerCase()} ID.` });
     const { rows } = await pool.query(`${REGISTER} AND a.id = $1
-      AND ($2::int IS NULL OR a.employee_id = $2)`, [req.params.id, req.user.role === 'employee' ? req.user.id : null]);
+      AND ($2::int IS NULL OR a.employee_id = $2)`, [req.params.id, req.user.role !== 'admin' ? req.user.id : null]);
     if (!rows.length) return res.status(404).json({ message: `${label} not found.` });
     const recoveries = await pool.query(`SELECT r.amount, p.id AS payslip_id, p.month, p.year
       FROM advance_recoveries r JOIN payslips p ON p.id = r.payslip_id
@@ -72,7 +82,7 @@ module.exports = function creditRequests(kind) {
   const date = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
     && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
 
-  router.post('/', authorize(...(isAdvance ? ['employee', 'admin'] : ['employee'])), asyncHandler(async (req, res) => {
+  router.post('/', authorize(...(isAdvance ? ['employee', 'manager', 'admin'] : ['employee', 'manager'])), asyncHandler(async (req, res) => {
     const body = req.body || {};
     const adminEnteredAdvance = isAdvance && req.user.role === 'admin';
     const employee_id = adminEnteredAdvance ? body.employee_id : req.user.id;
@@ -109,7 +119,7 @@ module.exports = function creditRequests(kind) {
       const result = await client.query(`INSERT INTO advances
         (employee_id, amount, instalment, first_recovery, reason, created_by, interest_percentage, instalment_count, status, record_type)
         SELECT id, $2, $3, $4, $5, $6, $7, $8, $10, $9 FROM employees
-        WHERE id = $1 AND role = 'employee' AND is_active RETURNING id, status`,
+        WHERE id = $1 AND role IN ('employee', 'manager') AND is_active RETURNING id, status`,
       [employee_id, amount, instalment, first_recovery, reasonText.trim(), req.user.id, interest_percentage, hasCount ? Number(instalment_count) : null, kind, initialStatus]);
       if (!result.rows.length) {
         await client.query('ROLLBACK');
@@ -123,6 +133,40 @@ module.exports = function creditRequests(kind) {
       }
       await client.query('COMMIT');
       res.status(201).json(result.rows[0]);
+    } catch (err) { await client.query('ROLLBACK'); throw err; }
+    finally { client.release(); }
+  }));
+
+  // Manager: first-level recommendation. The administrator still gives final approval.
+  router.patch('/:id/recommendation', authorize('manager'), asyncHandler(async (req, res) => {
+    const { decision, note = '' } = req.body || {};
+    if (!/^\d+$/.test(req.params.id) || Number(req.params.id) > 2147483647
+      || !['recommended', 'declined'].includes(decision) || typeof note !== 'string' || note.length > 2000) {
+      return res.status(400).json({ message: 'Choose recommend or decline.' });
+    }
+    if (decision === 'declined' && !note.trim()) {
+      return res.status(400).json({ message: 'Provide a reason for declining this request.' });
+    }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(LOCK);
+      const { rows } = await client.query(
+        `SELECT a.id, a.status FROM advances a JOIN employees e ON e.id = a.employee_id
+         WHERE a.id = $1 AND a.record_type = $2 AND e.manager_id = $3 FOR UPDATE OF a`,
+        [req.params.id, kind, req.user.id]);
+      if (!rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ message: `${label} not found.` }); }
+      if (rows[0].status !== 'pending') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ message: `This ${label.toLowerCase()} is already ${rows[0].status}.` });
+      }
+      await client.query(`UPDATE advances SET manager_decision = $2, manager_note = $3,
+        manager_decided_by = $4, manager_decided_at = NOW() WHERE id = $1`,
+      [rows[0].id, decision, note.trim() || null, req.user.id]);
+      await client.query(`INSERT INTO advance_events (advance_id, actor_id, action, note) VALUES ($1, $2, $3, $4)`,
+        [rows[0].id, req.user.id, decision === 'recommended' ? 'manager_recommend' : 'manager_decline', note.trim()]);
+      await client.query('COMMIT');
+      res.json({ message: 'Your recommendation was recorded.' });
     } catch (err) { await client.query('ROLLBACK'); throw err; }
     finally { client.release(); }
   }));
@@ -152,6 +196,18 @@ module.exports = function creditRequests(kind) {
       if (!loan) { await client.query('ROLLBACK'); return res.status(404).json({ message: `${label} not found.` }); }
       if (loan.status !== transitions[action][0]) {
         await client.query('ROLLBACK'); return res.status(409).json({ message: `Status changed. Refresh and review the ${label.toLowerCase()}.` });
+      }
+      if (action === 'approve') {
+        // The manager recommends first. Once a request has waited past the escalation window the
+        // administrator may decide it, so it is never stuck while a manager is away.
+        const owner = await client.query(
+          `SELECT e.manager_id, (CURRENT_DATE - a.created_at::date) >= $2 AS escalated
+           FROM advances a JOIN employees e ON e.id = a.employee_id WHERE a.id = $1`,
+          [loan.id, ESCALATE_AFTER_DAYS]);
+        if (owner.rows[0]?.manager_id && !loan.manager_decision && !owner.rows[0].escalated) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ message: `Awaiting the manager's recommendation before this ${label.toLowerCase()} can be approved.` });
+        }
       }
       const recovered = await client.query('SELECT COALESCE(SUM(amount),0) AS amount FROM advance_recoveries WHERE advance_id=$1', [loan.id]);
       if (Number(recovered.rows[0].amount) >= loanAmounts(loan.amount, loan.interest_percentage, loan.instalment_count).total) {

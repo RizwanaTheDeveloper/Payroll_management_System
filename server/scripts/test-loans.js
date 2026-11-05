@@ -95,6 +95,7 @@ async function main() {
     assert.equal(Number((await get()).recovered), 100, 'Approved loans reduce salary without waiting for disbursement');
     const approvedSlip = (await request('/payslips'))[0];
     assert.equal(Number(approvedSlip.net_pay), 875, 'Approved loan instalment and salary advance reduce net pay');
+    await pool.query('UPDATE payslips SET published_at = NOW() WHERE published_at IS NULL');
     const employeeSlips = await request('/payslips/my', 'GET', null, 200, employeeToken);
     assert.equal(employeeSlips[0].advance_recoveries[0].advance_id, id, 'Employee deduction list identifies the loan');
     assert.equal(Number(employeeSlips[0].advance_recoveries[0].amount), 100);

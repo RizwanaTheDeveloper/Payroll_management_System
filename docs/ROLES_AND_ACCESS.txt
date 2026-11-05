@@ -1,0 +1,366 @@
+PAYROLL MANAGEMENT SYSTEM - ROLES, ACCESS AND RESPONSIBILITIES
+================================================================
+
+This document describes what each role can see and do in every module, who is
+responsible for each step, and the rules that keep payroll safe. It matches how
+the system behaves today.
+
+CONTENTS
+  1. The three roles at a glance
+  2. Signing in and accounts
+  3. How requests are routed (manager first, administrator next, escalation)
+  4. Module by module: who can do what
+  5. The monthly payroll process, step by step
+  6. Role guides: Administrator, Manager, Employee
+  7. Rules and controls that apply to everyone
+  8. What the system does not do (yet)
+
+
+1. THE THREE ROLES AT A GLANCE
+------------------------------------------------------------------------------
+
+ADMINISTRATOR (HR / payroll owner)
+  Owns the company data, policy, final approval and money. Creates accounts,
+  sets salaries, approves payroll, records salary payments, and can act on any
+  employee. The administrator is not on payroll and has no attendance.
+
+MANAGER (line manager)
+  A real employee on payroll who also runs a team. Each team member has exactly
+  one manager ("Reports to"). The manager handles the team's day-to-day
+  decisions: attendance corrections, leave, first-level view on loans and
+  advances, and preparing the team's payroll. A manager also has the normal
+  employee portal for their own attendance, leave, pay and requests.
+
+EMPLOYEE
+  Self-service for their own records only: attendance, leave, payslips, loans,
+  advances, reports. An employee never sees anyone else's data.
+
+Landing page after sign-in:
+  Administrator -> Overview (/admin)
+  Manager       -> My team (/employee/team)
+  Employee      -> Home (/employee)
+
+
+2. SIGNING IN AND ACCOUNTS
+------------------------------------------------------------------------------
+
+- Employees sign in with their email and password on the login page.
+- Sessions are stored on the server and last 8 hours. Signing out ends the
+  session on the server. Nothing is kept in the browser's storage.
+- After 10 failed sign-in attempts for the same email and device within 15
+  minutes, sign-in is paused for 15 minutes.
+- Accounts are created by the administrator (Employees > Add employee). The
+  administrator enters the email and a TEMPORARY password. The new user must
+  choose their own password at first sign-in; until then nothing else works.
+  The administrator can untick "Require the employee to set their own password"
+  to hand over a permanent password instead.
+- Forgot password: the login page tells the user to contact HR. The
+  administrator sets a new temporary password in Employees > Edit, which also
+  signs that person out on every device. (There is no self-service reset yet.)
+- Any signed-in user can change their own password in Settings > Company &
+  account (needs the current password; minimum 8 characters).
+- A deactivated account loses access immediately.
+- Signing in does NOT mark attendance. Employees and managers press
+  "Check in" on their Home or Attendance page when the day starts and "Check out"
+  when it ends (see Attendance below).
+
+
+3. HOW REQUESTS ARE ROUTED
+------------------------------------------------------------------------------
+
+Every approval follows the same rule so that nothing is stuck and nobody
+approves their own request:
+
+  a) If the employee has a manager, the request goes to that manager first.
+  b) If the employee has no manager, it goes straight to the administrator.
+  c) A manager's own requests go to the manager they report to, or to the
+     administrator if they have none. A manager can never approve their own.
+  d) ESCALATION: a request still undecided after 3 days (setting:
+     APPROVAL_ESCALATION_DAYS) is flagged "escalated" and also appears in the
+     administrator's queue, who may then decide it.
+  e) The administrator can always decide leave and attendance requests (an
+     override); loans and advances follow the recommendation rule in section 4.
+
+Employees can always see who their pending request is "With".
+
+Live badges: the menu shows a count next to each item that has work waiting for
+the signed-in person. Counts refresh about every 30 seconds while the tab is
+open, when you return to the tab, and straight after you act. The administrator
+only sees what is theirs to act on (requests with no manager, escalated
+requests, recommended loans/advances, payroll awaiting approval).
+
+
+4. MODULE BY MODULE: WHO CAN DO WHAT
+------------------------------------------------------------------------------
+Key:  Y = yes   - = no   Own = own records only   Team = direct reports only
+
+MODULE: EMPLOYEES (accounts and salary structure)
+  Action                                         Admin  Manager  Employee
+  View all employee records                        Y       -        -
+  Add / edit / deactivate employees                Y       -        -
+  Set role (Employee or Manager)                   Y       -        -
+  Assign "Reports to" (the manager)                Y       -        -
+  Set email and temporary password / reset         Y       -        -
+  Edit salary components (with effective date      Y       -        -
+    and reason; every change is kept as history)
+  View own profile information                     -      Own      Own
+  Notes: a manager with active team members cannot be changed back to employee
+  until the team is reassigned. Deactivating a manager releases their team to
+  administrator approval.
+
+MODULE: ATTENDANCE
+  Action                                         Admin  Manager  Employee
+  Check in / check out for today (Home and         -      Y        Y
+    Attendance pages)
+  View own attendance and hours                    -      Y        Y
+  Request a correction (up to 60 days back,        -      Y        Y
+    needs a reason; not for leave days)
+  Approve / reject correction requests             Y     Team       -
+  View attendance of employees                     Y     Team       -
+  Mark or change attendance (single day, bulk)     Y     Team       -
+  Delete an attendance record                      Y     Team       -
+  Change a month whose payroll is finalized        Y      -         -
+    (administrator after reopening payroll)
+  Notes: approving a correction records the day as present with the approver's
+  name. Every attendance change records who made it and when. Check-in and
+  check-out use Indian time. The first check-in of the day cannot be moved and
+  a day can be checked out once; a missed or wrong time is fixed with a
+  correction request that carries the check-in and/or check-out time. Check-in
+  is refused on days recorded as leave or absent. Late check-in
+  (after 9:10 AM India time) on 3 or more days in a month leads to a half-day
+  deduction in that month's payroll.
+
+MODULE: LEAVE
+  Action                                         Admin  Manager  Employee
+  Apply for leave (casual, sick, paid) with up     -      Y        Y
+    to 3 medical documents (PDF/JPG/PNG, 5 MB)
+  View own requests and their status               -      Y        Y
+  See who a pending request is with                -      Y        Y
+  View leave requests                              Y     Team       -
+  Approve / reject (reason required to reject)     Y     Team       -
+  Open medical documents                           Y     Team      Own
+  Approve leave for a finalized payroll month      Y      -         -
+  Notes: an approved leave is written into attendance. Each month has 2 paid
+  leave days; leave beyond that is treated as unpaid in payroll. Overlapping
+  requests are not allowed. Each decision records who decided and when.
+
+MODULE: LOANS
+  Action                                         Admin  Manager  Employee
+  Request a loan (amount, instalments, interest,   -      Y        Y
+    first recovery month, reason)
+  View own loans, balance and repayments           -      Y        Y
+  Recommend or decline (note; reason to decline)   -     Team       -
+  View the full loan register                      Y       -        -
+  Approve or reject (reject needs a reason)        Y       -        -
+  Record the payment (date and reference)          Y       -        -
+  Pause / resume recovery (with a reason)          Y       -        -
+  Notes: if the employee has a manager, the administrator can approve only
+  after the manager has recommended or declined, or after the request has
+  escalated (3 days). Approved loans are recovered automatically from payroll.
+  The administrator cannot request a loan.
+
+MODULE: SALARY ADVANCES
+  Action                                         Admin  Manager  Employee
+  Request an advance (interest-free)               -      Y        Y
+  View own advances                                -      Y        Y
+  Recommend or decline                             -     Team       -
+  Add an advance directly (saved as approved)      Y       -        -
+  Approve / reject / record payment                Y       -        -
+  View the advance register for all employees      Y       -        -
+  Notes: same recommendation rule as loans. An advance is recovered in one
+  deduction from the chosen month or a later payroll.
+
+MODULE: PAYROLL
+  Action                                         Admin  Manager  Employee
+  Monthly checklist (attendance gaps, pending      Y     Team       -
+    leave, missing salary, status)
+  Preview and calculate payroll (saved as draft)   Y     Team       -
+  Submit drafts for approval                       Y*    Team       -
+  Mark as reviewed                                 Y       -        -
+  APPROVE (finalize and lock)                      Y       -        -
+  Return to draft / reopen (reason required)       Y       -        -
+  Record salary payment (date and reference)       Y       -        -
+  Publish approved payslips to employees           Y     Team       -
+  Delete a draft payslip                           Y       -        -
+  View payroll amounts                             Y     Team       -
+  *The administrator may also take a draft through Review and Finalize directly.
+  Notes: the manager cannot approve, pay, delete, or prepare their own pay; the
+  administrator prepares and approves a manager's own payroll. Payment entries
+  only record a payment already made; they do not move money.
+
+MODULE: PAYSLIPS
+  Action                                         Admin  Manager  Employee
+  View and download own payslips (PDF)             -      Y        Y
+    (only after they have been published)
+  Download any employee's payslip PDF              Y       -        -
+  Notes: the PDF holds bank and tax details, so managers cannot download their
+  team's PDFs.
+
+MODULE: REPORTS
+  Action                                         Admin  Manager  Employee
+  Company reports and exports (CSV, print)         Y       -        -
+  Employee monthly reports, all employees          Y       -        -
+  Own monthly report (attendance, leave, pay,      -      Y        Y
+    deductions, loans, advances; published
+    payslips only), CSV and print
+  Team report: monthly attendance and leave for    -      Y        -
+    the team, CSV and print - NO salary data
+
+MODULE: TEAM (managers only)
+  - My team: today's present, absent, on leave and not-yet-marked counts, the
+    items waiting for the manager, and upcoming approved leave. No salary data.
+  - Team attendance, Attendance requests, Team leave, Team loans (recommend or
+    decline), Team payroll, Team report - all limited to direct reports.
+
+MODULE: APPROVALS (administrator only)
+  One inbox of what is waiting on the administrator: payroll awaiting approval,
+  leave and attendance requests (unmanaged or escalated), loans and advances
+  ready for approval, approved payslips to publish. Attendance requests can be
+  decided right there.
+
+MODULE: SETTINGS
+  Administrator: overview of payroll, attendance, leave policies and the roles
+  and permissions table; change own password.
+  Manager / Employee: account information, links to their own modules, change
+  own password.
+
+
+5. THE MONTHLY PAYROLL PROCESS, STEP BY STEP
+------------------------------------------------------------------------------
+
+Step 1  Prepare the data (Manager for the team, Administrator for the rest)
+        Resolve pending leave, correct attendance, check the month's checklist.
+        Payroll uses the attendance and approved leave on record.
+
+Step 2  CALCULATE (Manager: Team payroll > Calculate payroll)
+        Draft payslips are created using: salary effective on each day
+        (versions), calendar-day proration by joining and leaving dates,
+        unpaid leave, late-sign-in deduction, loan and advance recoveries,
+        EPF and professional tax. Deductions over 50% of earnings raise a
+        warning; a negative take-home amount is blocked. The manager can
+        recalculate a draft as often as needed.
+
+Step 3  SUBMIT (Manager)
+        Drafts are sent to the administrator. Blocked while the employee still
+        has pending leave for the month. Changing a submitted payslip returns it
+        to draft and it must be submitted again.
+
+Step 4  APPROVE (Administrator: Payroll > Manage payroll)
+        The administrator checks the figures and approves ("Approve and lock
+        payroll"), or sends it back with a reason. Approval re-checks that
+        salary, attendance and employment data have not changed, and that no
+        leave is pending. An approved payslip is locked.
+
+Step 5  PUBLISH (Manager, or Administrator for unmanaged employees)
+        Only now can the employee see the payslip, its PDF and the figures in
+        their report. Reopening an approved payslip withdraws it from the
+        employee.
+
+Step 6  PAY (Administrator)
+        After paying through the bank, the administrator records the payment
+        date and reference. Reversing a payment record needs a reason.
+
+Every step is written to an audit history: who did it, when, and why.
+
+
+6. ROLE GUIDES
+------------------------------------------------------------------------------
+
+6.1 ADMINISTRATOR - responsibilities
+  People
+    * Create accounts (email + temporary password), set role and "Reports to".
+    * Keep salary structures correct; every change needs an effective date and
+      a reason and is kept as history.
+    * Reset passwords for people who are locked out.
+    * Deactivate leavers.
+  Day to day
+    * Work the Approvals inbox: requests for employees with no manager,
+      escalated requests, recommended loans and advances.
+    * Fix attendance in any month (reopen payroll first if it is finalized).
+  Money
+    * Approve loans and advances and record the payment; pause or resume
+      recovery when needed.
+    * Approve payroll, record salary payments, publish where there is no
+      manager, reopen payroll for corrections with a reason.
+  Oversight
+    * Company reports, employee reports and exports.
+
+6.2 MANAGER - responsibilities
+  Own work (as an employee)
+    * Own attendance, leave, payslips, loans, advances and reports.
+    * Own requests are decided by the manager they report to, else the
+      administrator.
+  Team work (direct reports only)
+    * Keep the team's attendance accurate: approve or reject correction
+      requests, mark attendance, check "not marked yet" on My team.
+    * Decide team leave promptly (a reason is needed to reject). Requests left
+      undecided for 3 days escalate to the administrator.
+    * Give a first-level view on team loans and advances: recommend or decline
+      with a note. The administrator makes the final decision.
+    * Prepare team payroll: calculate, review, submit for approval, then
+      publish after the administrator approves.
+    * Use the Team report for monthly attendance and leave (no salary data).
+  Limits
+    * Cannot approve or pay payroll, create or edit employees, see other teams,
+      download team payslip PDFs, or change a month whose payroll is finalized.
+
+6.3 EMPLOYEE - responsibilities
+    * Check in when the day starts and check out when it ends. If a day or a
+      time is wrong or missed (for example a forgotten check-out), request a
+      correction with a reason, and the time, within 60 days.
+    * Apply for leave in advance, attach medical documents where relevant, and
+      follow the status (and who it is with).
+    * Request loans or advances when needed; follow the decision, payment and
+      recovery in the same screens.
+    * View published payslips, download the PDF, and check the monthly report.
+    * Keep their password private and change it from Settings.
+  Limits
+    * Sees only their own data. Cannot see other employees, salary structures,
+      draft or unpublished payslips, or any approval screens.
+
+
+7. RULES AND CONTROLS THAT APPLY TO EVERYONE
+------------------------------------------------------------------------------
+
+Separation of duties
+  * Nobody approves their own request. A manager prepares and publishes team
+    payroll but only the administrator approves and pays it.
+  * Managers cannot change attendance, or approve leave, for a month whose
+    payroll is finalized.
+
+Data isolation
+  * Managers see only their direct reports. Anything outside the team behaves as
+    if it does not exist.
+  * Employees see only their own records, enforced on the server, not just on
+    screen.
+  * Admin-only functions return "forbidden" to everyone else.
+
+Audit trail
+  * Leave decisions: who and when.
+  * Attendance: who marked or changed each day, and when.
+  * Loans and advances: every action, including manager recommendations, with
+    the person and time.
+  * Payroll: generated, updated, submitted, reviewed, approved, published,
+    reopened, payment recorded or reversed - each with person, time and reason
+    and the values before and after.
+  * Salary changes: effective date, reason and who entered them.
+
+Security
+  * Passwords are stored hashed. Temporary passwords must be replaced at first
+    sign-in. Sessions are server-side and end on sign-out, expiry, deactivation,
+    or password reset.
+  * Sign-in attempts are rate limited.
+
+
+8. WHAT THE SYSTEM DOES NOT DO (YET)
+------------------------------------------------------------------------------
+
+  * Self-service password reset by email (today: ask the administrator).
+  * Email or SMS notifications. Alerts are the live badges inside the app, and
+    only managers and administrators have them.
+  * A manager's delegate (acting manager) while they are on leave. Escalation to
+    the administrator after 3 days covers the gap.
+  * Salary-revision requests from managers.
+  * Custom roles or editable permissions (the three roles are fixed).
+  * Holiday calendars and shift patterns. The payroll checklist treats Monday to
+    Friday as working days as an advisory baseline only.

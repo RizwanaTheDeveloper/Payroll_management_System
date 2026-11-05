@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 
 import api from '../api';
@@ -7,39 +6,19 @@ const Ctx = createContext();
 
 export const useAuth = () => useContext(Ctx);
 
+// The signed-in user always comes from the backend (GET /auth/me); the browser keeps no copy.
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-      if (!storedUser || storedUser === 'undefined') {
-        return null;
-      }
-
-      return JSON.parse(storedUser);
-    } catch (error) {
-      console.error('Invalid stored user data:', error);
-
-      // Remove corrupted data so it doesn't crash the app again
-      localStorage.removeItem('user');
-
-      return null;
-    }
-  });
-
-  const login = async (email, password) => {
-    const { data } = await api.post('/auth/login', {
-      email,
-      password,
-    });
-
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-
-    setUser(data.user);
-
-    return data.user;
-  };
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/auth/me')
+      .then(({ data }) => { if (!cancelled) setUser(data.user); })
+      .catch(() => { if (!cancelled) setUser(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const expireSession = () => setUser(null);
@@ -47,13 +26,24 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('payroll:session-expired', expireSession);
   }, []);
 
-  const logout = () => {
-    localStorage.clear();
+  const login = async (email, password) => {
+    const { data } = await api.post('/auth/login', { email, password });
+    setUser(data.user);
+    return data.user;
+  };
+
+  // Called after the required first-login password change so the app can proceed.
+  const passwordChanged = () => {
+    setUser((current) => (current ? { ...current, must_change_password: false } : current));
+  };
+
+  const logout = async () => {
     setUser(null);
+    try { await api.post('/auth/logout'); } catch { /* the session also expires on the server */ }
   };
 
   return (
-    <Ctx.Provider value={{ user, login, logout }}>
+    <Ctx.Provider value={{ user, loading, login, logout, passwordChanged }}>
       {children}
     </Ctx.Provider>
   );

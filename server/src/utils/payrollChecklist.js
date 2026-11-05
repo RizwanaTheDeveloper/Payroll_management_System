@@ -21,11 +21,12 @@ async function checklist(client, input) {
       (SELECT basic FROM salary_history WHERE employee_id = $1 AND effective_from < $2::date + interval '1 month'
         ORDER BY effective_from DESC LIMIT 1) AS history_basic`,
     [employee.id, start, employee.joining_date, employee.resignation_date]);
-    const slip = (await client.query('SELECT id, status, payment_status, net_pay FROM payslips WHERE employee_id = $1 AND month = $2 AND year = $3', [employee.id, input.month, input.year])).rows[0];
+    const slip = (await client.query('SELECT id, status, payment_status, net_pay, published_at FROM payslips WHERE employee_id = $1 AND month = $2 AND year = $3', [employee.id, input.month, input.year])).rows[0];
     const preview = await calculate(client, employee, input);
     result.push({ employee_id: employee.id, name: employee.name, emp_code: employee.emp_code,
       ...rows[0], missing_salary: preview.missingSalary,
-      payslip_id: slip?.id || null, payroll_status: slip?.status || 'not_generated', payment_status: slip?.payment_status || 'unpaid' });
+      payslip_id: slip?.id || null, payroll_status: slip?.status || 'not_generated', payment_status: slip?.payment_status || 'unpaid',
+      published: Boolean(slip?.published_at) });
   }
   return { period: start.slice(0, 7), employees: result, summary: {
     eligible: result.length, missing_attendance: result.reduce((n, r) => n + r.missing_attendance, 0),
@@ -33,7 +34,9 @@ async function checklist(client, input) {
     pending_leaves: result.reduce((n, r) => n + r.pending_leaves, 0),
     missing_salary: result.filter((r) => r.missing_salary).length,
     not_generated: result.filter((r) => !r.payslip_id).length,
+    submitted: result.filter((r) => r.payroll_status === 'submitted').length,
     finalized: result.filter((r) => r.payroll_status === 'finalized').length,
+    published: result.filter((r) => r.published).length,
     paid: result.filter((r) => r.payment_status === 'paid').length,
   }, note: 'Attendance gaps cover elapsed Monday–Friday dates within employment. Approved leave is excluded. Check company holidays and working schedules before making deductions. Gaps are advisory and do not automatically reduce salary.' };
 }

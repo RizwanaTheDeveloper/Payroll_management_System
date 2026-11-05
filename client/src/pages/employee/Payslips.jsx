@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api, { downloadPayslip } from '../../api';
 import { loanDeductionItems } from '../../utils/payrollDeductions';
-import MonthNavigation from '../../components/MonthNavigation';
 
 import {
   FiCalendar,
@@ -56,19 +55,20 @@ const labelFromKey = (key) => {
 const getPeriodLabel = (p) =>
   `${MONTHS[Number(p.month) - 1] || p.month} ${p.year}`;
 
-const getAllowances = (p) => {
-  if (p.allowances !== undefined && p.allowances !== null) {
-    return Number(p.allowances) || 0;
-  }
+// Everything earned beyond basic pay. The `allowances` column is only the one-off additional
+// amount, so the salary components (HRA, special, LTA, other) must be added or net pay does not reconcile.
+const getAllowances = (p) => (
+  Number(p.hra || 0) +
+  Number(p.special_allowance || 0) +
+  Number(p.lta || 0) +
+  Number(p.other_allowances || 0) +
+  Number(p.allowances || 0) +
+  Number(p.travel_allowance || 0) +
+  Number(p.leave_allowance || 0) +
+  Number(p.bonus || 0)
+);
 
-  return (
-    Number(p.hra || 0) +
-    Number(p.special_allowance || 0) +
-    Number(p.travel_allowance || 0) +
-    Number(p.leave_allowance || 0) +
-    Number(p.bonus || 0)
-  );
-};
+const cap = (value) => String(value).charAt(0).toUpperCase() + String(value).slice(1);
 
 const getDeductions = (p) => {
   return (
@@ -213,8 +213,8 @@ export default function Payslips() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           flex-shrink: 0;
         }
 
@@ -256,9 +256,9 @@ export default function Payslips() {
         }
 
         .refresh-btn:hover {
-          border-color: #93c5fd;
+          border-color: #a5b4fc;
           background: #f8fbff;
-          color: #2563eb;
+          color: #4f46e5;
         }
 
         .refresh-btn:disabled {
@@ -331,8 +331,8 @@ export default function Payslips() {
         }
 
         .summary-icon.blue {
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .summary-icon.green {
@@ -458,8 +458,8 @@ export default function Payslips() {
         }
 
         .month-input:focus {
-          border-color: #60a5fa;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, .10);
+          border-color: #818cf8;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, .10);
         }
 
         .filter-actions {
@@ -483,14 +483,14 @@ export default function Payslips() {
         }
 
         .filter-btn:hover {
-          border-color: #93c5fd;
-          color: #2563eb;
+          border-color: #a5b4fc;
+          color: #4f46e5;
           background: #f8fbff;
         }
 
         .filter-btn.active {
-          border-color: #2563eb;
-          background: #2563eb;
+          border-color: #4f46e5;
+          background: #4f46e5;
           color: #fff;
         }
 
@@ -506,7 +506,7 @@ export default function Payslips() {
         }
 
         .clear-filter:hover {
-          color: #2563eb;
+          color: #4f46e5;
         }
 
         .payslips-card {
@@ -539,8 +539,8 @@ export default function Payslips() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .card-header-icon svg {
@@ -703,9 +703,9 @@ export default function Payslips() {
         }
 
         .download-btn:hover {
-          border-color: #2563eb;
-          background: #eff6ff;
-          color: #2563eb;
+          border-color: #4f46e5;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .download-btn:disabled {
@@ -797,7 +797,7 @@ export default function Payslips() {
           padding: 0 13px;
           border: 0;
           border-radius: 9px;
-          background: #2563eb;
+          background: #4f46e5;
           color: #fff;
           font-size: 12px;
           font-weight: 700;
@@ -805,7 +805,7 @@ export default function Payslips() {
         }
 
         .retry-btn:hover {
-          background: #1d4ed8;
+          background: #4338ca;
         }
 
         .retry-btn svg {
@@ -826,8 +826,8 @@ export default function Payslips() {
         .loading-spinner {
           width: 18px;
           height: 18px;
-          border: 2px solid #dbeafe;
-          border-top-color: #2563eb;
+          border: 2px solid #e0e7ff;
+          border-top-color: #4f46e5;
           border-radius: 50%;
           animation: payslipSpin .8s linear infinite;
         }
@@ -1168,8 +1168,8 @@ export default function Payslips() {
           </div>
 
           <div>
-            <strong>Filter Payslips</strong>
-            <span>
+            <strong style={{ display: 'block' }}>Filter Payslips</strong>
+            <span style={{ display: 'block', marginTop: 2, fontSize: 13, color: '#64748b' }}>
               Choose a salary period to view
             </span>
           </div>
@@ -1250,7 +1250,6 @@ export default function Payslips() {
       </div>
 
       {/* Payslip List */}
-      {period && <MonthNavigation period={period} onChange={setPeriod} />}
       <div className="payslips-card">
         <div className="card-header">
           <div className="card-header-left">
@@ -1388,7 +1387,7 @@ export default function Payslips() {
                               </span>
 
                               <span className="period-label">
-                                {p.status || 'Generated'} · {p.payment_status || 'Not recorded'}
+                                {cap(p.status || 'generated')} · {cap(p.payment_status || 'not recorded')}
                               </span>
                             </div>
                           </div>
@@ -1398,13 +1397,13 @@ export default function Payslips() {
                           {money(p.basic)}
                         </td>
 
-                        <td className="positive">
-                          +{money(allowances)}
+                        <td className={allowances > 0 ? 'positive' : 'muted-zero'}>
+                          {allowances > 0 ? '+' : ''}{money(allowances)}
                         </td>
 
-                        <td className="negative">
-                          -{money(totalDeductions)}
-                          <details><summary>Deduction breakdown</summary><small style={{ display: 'block' }}>EPF: {money(p.epf)}</small><small style={{ display: 'block' }}>Professional tax: {money(p.professional_tax)}</small>{Number(p.late_login_deduction) > 0 && <small style={{ display: 'block' }}>Late login (half day): {money(p.late_login_deduction)} — {p.late_login_reason}</small>}{p.unpaid_leave_deduction == null ? <small>Other / unpaid leave: {money(p.deductions)}</small> : <><small style={{ display: 'block' }}>Unpaid leave: {money(p.unpaid_leave_deduction)}</small><small style={{ display: 'block' }}>Additional deductions: {money(p.additional_deductions)}</small></>}</details>
+                        <td className={totalDeductions > 0 ? 'negative' : 'muted-zero'}>
+                          {totalDeductions > 0 ? '-' : ''}{money(totalDeductions)}
+                          <details><summary>Deduction breakdown</summary><small style={{ display: 'block' }}>EPF: {money(p.epf)}</small><small style={{ display: 'block' }}>Professional tax: {money(p.professional_tax)}</small>{Number(p.late_login_deduction) > 0 && <small style={{ display: 'block' }}>Late login (half day): {money(p.late_login_deduction)} — {p.late_login_reason}</small>}{p.unpaid_leave_deduction == null ? <small>Other / Loss Of Pay: {money(p.deductions)}</small> : <><small style={{ display: 'block' }}>Loss Of Pay: {money(p.unpaid_leave_deduction)}</small><small style={{ display: 'block' }}>Additional deductions: {money(p.additional_deductions)}</small></>}</details>
                           {loanDeductionItems(p).map((entry) => (
                             <small key={entry.id} style={{ display: 'block' }}>
                               {entry.label}: -{money(entry.amount)}
@@ -1474,7 +1473,7 @@ export default function Payslips() {
                             {getPeriodLabel(p)}
                           </h3>
                           <small>
-                            {p.status || 'Generated'} · {p.payment_status || 'Not recorded'}
+                            {cap(p.status || 'generated')} · {cap(p.payment_status || 'not recorded')}
                           </small>
                         </div>
                       </div>
@@ -1520,7 +1519,7 @@ export default function Payslips() {
                       <div className="mobile-breakdown-item"><span>EPF</span><strong>{money(p.epf)}</strong></div>
                       <div className="mobile-breakdown-item"><span>Professional tax</span><strong>{money(p.professional_tax)}</strong></div>
                       {Number(p.late_login_deduction) > 0 && <><div className="mobile-breakdown-item"><span>Late login (half day)</span><strong>{money(p.late_login_deduction)}</strong></div><small>{p.late_login_reason}</small></>}
-                      {p.unpaid_leave_deduction != null && <><div className="mobile-breakdown-item"><span>Unpaid leave</span><strong>{money(p.unpaid_leave_deduction)}</strong></div><div className="mobile-breakdown-item"><span>Additional deductions</span><strong>{money(p.additional_deductions)}</strong></div></>}
+                      {p.unpaid_leave_deduction != null && <><div className="mobile-breakdown-item"><span>Loss Of Pay</span><strong>{money(p.unpaid_leave_deduction)}</strong></div><div className="mobile-breakdown-item"><span>Additional deductions</span><strong>{money(p.additional_deductions)}</strong></div></>}
                     </div>
 
                     <button

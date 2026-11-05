@@ -22,7 +22,7 @@ export default function Login() {
     setBusy(true);
     try {
       const user = await login(email.trim(), password);
-      navigate(`/${user.role}`, { replace: true });
+      navigate(user.role === 'admin' ? '/admin' : user.role === 'manager' ? '/employee/team' : '/employee', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to sign in. Check your email and password and try again.');
     } finally {

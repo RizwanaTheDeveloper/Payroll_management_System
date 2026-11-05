@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcrypt');
 
+const { destroyEmployeeSessions } = require('../utils/session');
 const pool = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { amount } = require('../utils/payrollValidation');
@@ -29,6 +30,8 @@ const TEXT = [
   'gender',
   'pan',
   'pf_uan',
+  'bank_name',
+  'bank_branch',
   'account_number',
   'ifsc_code'
 ];
@@ -70,6 +73,8 @@ const OUT = `
   name,
   email,
   role,
+  manager_id,
+  must_change_password,
   designation,
   department,
   gender,
@@ -83,6 +88,8 @@ const OUT = `
   pf_uan,
 
   account_number,
+  bank_name,
+  bank_branch,
   ifsc_code,
 
   tax_regime,
@@ -207,6 +214,29 @@ function clean(body) {
 
 
     values[key] = number;
+  }
+
+
+  // -------------------------------------------------------
+  // ROLE AND MANAGER
+  // -------------------------------------------------------
+
+  if ('role' in body) {
+    if (!['employee', 'manager'].includes(body.role)) {
+      return { error: 'role must be employee or manager' };
+    }
+    values.role = body.role;
+  }
+
+  if ('manager_id' in body) {
+    const raw = body.manager_id;
+    if (raw === '' || raw === null) {
+      values.manager_id = null;
+    } else if (!/^\d+$/.test(String(raw)) || Number(raw) > 2147483647) {
+      return { error: 'Invalid manager' };
+    } else {
+      values.manager_id = Number(raw);
+    }
   }
 
 
@@ -371,7 +401,7 @@ router.get(
           (
             SELECT COUNT(*)
             FROM employees
-            WHERE role = 'employee'
+            WHERE role IN ('employee', 'manager')
               AND is_active
           )::int AS "headcount",
 
@@ -430,7 +460,7 @@ router.get(
       const roleFilter =
         req.query.all
           ? ''
-          : "AND role = 'employee'";
+          : "AND role IN ('employee', 'manager')";
 
 
       const {
@@ -453,6 +483,32 @@ router.get(
     }
   )
 );
+
+
+// Database-backed checks for the manager role and reporting line.
+async function teamError(values, selfId) {
+  if (values.manager_id != null) {
+    if (selfId && Number(selfId) === values.manager_id) {
+      return 'An employee cannot be their own manager';
+    }
+    const { rows } = await pool.query(
+      `SELECT manager_id FROM employees WHERE id = $1 AND role = 'manager' AND is_active`,
+      [values.manager_id]
+    );
+    if (!rows[0]) return 'Selected manager must be an active manager';
+    if (selfId && rows[0].manager_id === Number(selfId)) {
+      return 'Reporting lines cannot be circular';
+    }
+  }
+  if (selfId && values.role === 'employee') {
+    const { rowCount } = await pool.query(
+      'SELECT 1 FROM employees WHERE manager_id = $1 AND is_active LIMIT 1',
+      [selfId]
+    );
+    if (rowCount) return 'Reassign this team before changing the manager to an employee';
+  }
+  return null;
+}
 
 
 // =========================================================
@@ -509,9 +565,18 @@ router.post(
       }
 
 
+      const teamProblem = await teamError(values, null);
+      if (teamProblem) {
+        return res.status(400).json({ message: teamProblem });
+      }
+
+      const role = values.role || 'employee';
+      delete values.role;
+
       const email =
         (body.email || '')
-          .trim();
+          .trim()
+          .toLowerCase();
 
 
       // ---------------------------------------------------
@@ -587,6 +652,10 @@ router.post(
       }
 
 
+      if (String(body.password).length < 8) {
+        return res.status(400).json({ message: 'Temporary password must be at least 8 characters' });
+      }
+
       // ---------------------------------------------------
       // PASSWORD HASH
       // ---------------------------------------------------
@@ -606,6 +675,7 @@ router.post(
         'email',
         'password_hash',
         'role',
+        'must_change_password',
         ...keys
       ];
 
@@ -613,7 +683,9 @@ router.post(
       const params = [
         email,
         hash,
-        'employee',
+        role,
+        // The password the administrator sets is temporary unless they opt out.
+        body.require_password_change !== false,
         ...keys.map(
           (key) =>
             values[key]
@@ -704,6 +776,12 @@ router.put(
       }
 
 
+      const teamProblem = await teamError(values, req.params.id);
+      if (teamProblem) {
+        return res.status(400).json({ message: teamProblem });
+      }
+
+
       const keys =
         Object.keys(values);
 
@@ -723,10 +801,28 @@ router.put(
 
 
       // ---------------------------------------------------
+      // EMAIL (the login ID) - previously ignored on update
+      // ---------------------------------------------------
+
+      if (body.email !== undefined) {
+        const nextEmail = String(body.email || '').trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(nextEmail)) {
+          return res.status(400).json({ message: 'Enter a valid email address' });
+        }
+        params.push(nextEmail);
+        sets.push(`email = $${params.length}`);
+      }
+
+
+      // ---------------------------------------------------
       // OPTIONAL PASSWORD
       // ---------------------------------------------------
 
       if (body.password) {
+
+        if (String(body.password).length < 8) {
+          return res.status(400).json({ message: 'Password must be at least 8 characters' });
+        }
 
         params.push(
           await bcrypt.hash(
@@ -738,6 +834,13 @@ router.put(
 
         sets.push(
           `password_hash = $${params.length}`
+        );
+
+        // An administrator-set password is temporary: the employee must replace it at next sign-in.
+        params.push(body.require_password_change !== false);
+
+        sets.push(
+          `must_change_password = $${params.length}`
         );
       }
 
@@ -771,7 +874,7 @@ router.put(
 
           WHERE id = $${params.length}
 
-            AND role = 'employee'
+            AND role IN ('employee', 'manager')
 
           RETURNING ${OUT}
           `,
@@ -790,6 +893,9 @@ router.put(
             });
         }
 
+
+        // A password reset by an administrator signs the employee out everywhere.
+        if (body.password) await destroyEmployeeSessions(rows[0].id);
 
         res.json(rows[0]);
 
@@ -825,6 +931,14 @@ router.delete(
   asyncHandler(
     async (req, res) => {
 
+      await destroyEmployeeSessions(req.params.id);
+
+      // A deactivated manager's team falls back to admin approval.
+      await pool.query(
+        'UPDATE employees SET manager_id = NULL WHERE manager_id = $1',
+        [req.params.id]
+      );
+
       const {
         rowCount
       } = await pool.query(
@@ -836,7 +950,7 @@ router.delete(
 
         WHERE id = $1
 
-          AND role = 'employee'
+          AND role IN ('employee', 'manager')
         `,
 
         [req.params.id]

@@ -1,4 +1,3 @@
-.payroll-month-navigation { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
 .payroll-checklist { padding: 24px; background: white; border: 1px solid var(--border); border-radius: 16px; margin: 20px 0; }
 .payroll-checklist-heading, .payroll-workflow-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 .payroll-checklist h2, .payroll-workflow-heading h2 { font-size: 20px; margin: 0 0 8px; }
@@ -21,7 +20,7 @@
 .payroll-state { display: inline-block; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; background: #eef2fc; color: #405577; }
 .payroll-state-finalized, .payroll-state-paid { background: var(--mint); color: var(--success); }
 .payroll-state-draft, .payroll-state-unpaid { background: var(--peach); color: var(--warn); }
-.payroll-state-reviewed { background: var(--primary-l); color: var(--primary-d); }
+.payroll-state-reviewed, .payroll-state-submitted { background: var(--primary-l); color: var(--primary-d); }
 .payroll-workflow-dialog { padding: 0; width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); border: 1px solid var(--border); border-radius: 18px; color: var(--text); box-shadow: 0 24px 80px rgb(23 43 77 / 22%); }
 .payroll-workflow-dialog::backdrop { background: rgb(23 43 77 / 45%); }
 .payroll-workflow-heading { padding: 22px 24px; border-bottom: 1px solid var(--border); background: #f8faff; }
@@ -47,7 +46,5 @@
 .payroll-salary-history :is(td, th) { padding: 10px; border-bottom: 1px solid var(--border); }
 @media (max-width: 650px) {
   .payroll-checklist { padding: 16px; }
-  .payroll-month-navigation > button { flex: 1; }
   .payroll-workflow-body, .payroll-workflow-heading { padding: 18px; }
 }
-@media print { .payroll-month-navigation { display: none !important; } }

@@ -54,6 +54,7 @@ router.get(
       FROM payslips p
 
       WHERE employee_id = $1
+        AND published_at IS NOT NULL
 
       ORDER BY
         year DESC,
@@ -72,7 +73,7 @@ router.get(
 
 router.get(
   '/',
-  authorize('admin'),
+  authorize('admin', 'manager'),
   asyncHandler(async (req, res) => {
     const {
       month,
@@ -82,6 +83,11 @@ router.get(
 
     const where = [];
     const vals = [];
+
+    if (req.user.role === 'manager') {
+      vals.push(req.user.id);
+      where.push(`e.manager_id = $${vals.length}`);
+    }
 
     if (month) {
       vals.push(month);
@@ -171,6 +177,7 @@ router.get(
       : `
         p.id = $1
         AND p.employee_id = $2
+        AND p.published_at IS NOT NULL
       `;
 
     const { rows } =
@@ -190,6 +197,8 @@ router.get(
           e.dob::text AS dob,
           e.pan,
           e.pf_uan,
+          e.bank_name,
+          e.bank_branch,
           e.account_number,
           e.ifsc_code,
           e.tax_regime,
@@ -246,7 +255,8 @@ router.get(
     payslip.account_number =
       payslip.account_number || '';
 
-    payslip.bank_name = '';
+    payslip.bank_name = payslip.bank_name || '';
+    payslip.bank_branch = payslip.bank_branch || '';
 
     payslip.uan =
       payslip.pf_uan || '';

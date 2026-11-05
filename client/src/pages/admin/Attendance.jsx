@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 import {
   FiCalendar,
@@ -94,6 +95,7 @@ const ATTENDANCE_CHOICES = [
 ========================================================= */
 
 function MarkDay() {
+  const team = useAuth().user?.role === 'manager';
   const [date, setDate] = useState(todayStr());
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -243,7 +245,7 @@ function MarkDay() {
             <FiUsers />
           </div>
           <div>
-            <span>Total Employees</span>
+            <span>{team ? 'Team members' : 'Total Employees'}</span>
             <strong>{summary.total}</strong>
           </div>
         </div>
@@ -329,7 +331,7 @@ function MarkDay() {
           <div>
             <h3>Quick Actions</h3>
             <p>
-              Apply attendance status to all employees at once.
+              {team ? 'Apply attendance status to your whole team at once.' : 'Apply attendance status to all employees at once.'}
             </p>
           </div>
         </div>
@@ -356,15 +358,6 @@ function MarkDay() {
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
 
-          <button
-            type="button"
-            className="attendance-btn primary"
-            onClick={save}
-            disabled={saving || loading || rows.length === 0}
-          >
-            <FiSave />
-            {saving ? 'Saving...' : 'Save Attendance'}
-          </button>
         </div>
 
         {message && (
@@ -381,7 +374,7 @@ function MarkDay() {
       <div className="attendance-table-card">
         <div className="table-card-header">
           <div>
-            <h2>Employee Attendance</h2>
+            <h2>{team ? 'Team attendance' : 'Employee Attendance'}</h2>
             <p>
               {formatDate(date)} · {rows.length} employee
               {rows.length === 1 ? '' : 's'}
@@ -502,6 +495,23 @@ function MarkDay() {
             </div>
           )}
         </div>
+
+        <div className="attendance-save-bar">
+          <span className="attendance-save-hint">
+            {rows.filter((row) => row.status !== row.loaded_status).length > 0
+              ? `${rows.filter((row) => row.status !== row.loaded_status).length} unsaved change${rows.filter((row) => row.status !== row.loaded_status).length === 1 ? '' : 's'}`
+              : 'All changes saved'}
+          </span>
+          <button
+            type="button"
+            className="attendance-btn primary"
+            onClick={save}
+            disabled={saving || loading || rows.length === 0}
+          >
+            <FiSave />
+            {saving ? 'Saving...' : 'Save Attendance'}
+          </button>
+        </div>
       </div>
 
       <style>{`
@@ -513,6 +523,7 @@ function MarkDay() {
           overflow-x: auto;
         }
         .attendance-choice {
+          white-space: nowrap;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -527,8 +538,8 @@ function MarkDay() {
           font-weight: 600;
           cursor: pointer;
         }
-        .attendance-choice:hover { border-color: #2563eb; background: #eff6ff; }
-        .attendance-choice:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+        .attendance-choice:hover { border-color: #4f46e5; background: #eef2ff; }
+        .attendance-choice:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 2px; }
         .attendance-choice.selected { border-color: #059669; background: #ecfdf5; color: #047857; }
         .attendance-choice.leave.selected { border-color: #d97706; background: #fffbeb; color: #b45309; }
         .attendance-choice:disabled { opacity: .6; cursor: wait; }
@@ -568,8 +579,8 @@ function MarkDay() {
         }
 
         .summary-icon.blue {
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .summary-icon.green {
@@ -631,8 +642,8 @@ function MarkDay() {
           height: 44px;
           min-width: 44px;
           border-radius: 12px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -693,8 +704,8 @@ function MarkDay() {
         }
 
         .date-input-wrap input:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
         .bulk-action-card {
@@ -752,12 +763,12 @@ function MarkDay() {
         }
 
         .attendance-btn.primary {
-          background: #2563eb;
+          background: #4f46e5;
           color: #ffffff;
         }
 
         .attendance-btn.primary:hover:not(:disabled) {
-          background: #1d4ed8;
+          background: #4338ca;
         }
 
         .attendance-btn.success {
@@ -814,9 +825,9 @@ function MarkDay() {
         }
 
         .attendance-message.info {
-          background: #eff6ff;
-          color: #1d4ed8;
-          border: 1px solid #bfdbfe;
+          background: #eef2ff;
+          color: #4338ca;
+          border: 1px solid #c7d2fe;
         }
 
         .attendance-table-card {
@@ -912,8 +923,8 @@ function MarkDay() {
           height: 36px;
           min-width: 36px;
           border-radius: 10px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -957,8 +968,8 @@ function MarkDay() {
         }
 
         .attendance-select:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08);
         }
 
         .attendance-select:disabled {
@@ -1017,8 +1028,8 @@ function MarkDay() {
         }
 
         .note-input-wrap input:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08);
         }
 
         .note-input-wrap input:disabled {
@@ -1760,8 +1771,8 @@ function Records() {
 
         .records-input select:focus,
         .records-input input:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08);
         }
 
         .records-refresh {
@@ -1819,8 +1830,8 @@ function Records() {
         }
 
         .records-summary-icon.blue {
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .records-summary-icon.green {
@@ -1890,8 +1901,8 @@ function Records() {
           display: inline-flex;
           align-items: center;
           gap: 7px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           padding: 7px 10px;
           border-radius: 999px;
           font-size: 11px;
@@ -1963,8 +1974,8 @@ function Records() {
           height: 34px;
           min-width: 34px;
           border-radius: 9px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -2023,8 +2034,8 @@ function Records() {
         }
 
         .record-badge.working {
-          background: #eff6ff;
-          color: #1d4ed8;
+          background: #eef2ff;
+          color: #4338ca;
         }
 
         .record-badge.neutral {
@@ -2230,6 +2241,7 @@ function Records() {
 
 export default function Attendance() {
   const [tab, setTab] = useState('mark');
+  const team = useAuth().user?.role === 'manager';
 
   return (
     <div className="attendance-page">
@@ -2241,11 +2253,10 @@ export default function Attendance() {
             </div>
 
             <div>
-              <h1>Attendance &amp; Leave</h1>
+              <h1>{team ? 'Team attendance' : 'Attendance & Leave'}</h1>
 
               <p>
-                Manage employee attendance, working hours and
-                leave records.
+                {team ? 'Mark daily attendance for your direct reports and review their monthly records.' : 'Manage employee attendance, working hours and leave records.'}
               </p>
             </div>
           </div>
@@ -2306,8 +2317,8 @@ export default function Attendance() {
           height: 46px;
           min-width: 46px;
           border-radius: 13px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -2362,7 +2373,7 @@ export default function Attendance() {
         }
 
         .attendance-tab.active {
-          color: #2563eb;
+          color: #4f46e5;
           background: #ffffff;
           box-shadow: 0 2px 5px rgba(15, 23, 42, 0.08);
         }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { FiCalendar, FiInfo, FiRefreshCw, FiSearch, FiX } from "react-icons/fi";
+import { FiClock, FiInfo, FiRefreshCw, FiRepeat, FiSearch, FiX } from "react-icons/fi";
+import { FaRupeeSign } from "react-icons/fa";
 import api from "../../api";
 import LoanRepaymentTotal from "../../components/LoanRepaymentTotal";
 import { scheduledLoanDeductions } from "../../utils/payrollDeductions";
@@ -41,6 +42,8 @@ const eventNames = {
   disburse: "Payment recorded",
   pause: "Recovery paused",
   resume: "Recovery resumed",
+  manager_recommend: "Manager recommended",
+  manager_decline: "Manager declined",
 };
 
 function EmployeeSearch({ employees, value, onChange, loading }) {
@@ -515,7 +518,7 @@ export default function Loans() {
         <div className="loan-stat">
           <div>
             <strong>Outstanding</strong>
-            <FiCalendar />
+            <FaRupeeSign />
           </div>
           <b>
             {loading || error
@@ -537,7 +540,7 @@ export default function Loans() {
             <strong>
               {period ? periodName(`${period}-01`) : "Monthly"} recovery
             </strong>
-            <FiCalendar />
+            <FiRepeat />
           </div>
           <b>{loading || error ? "—" : money(recovery)}</b>
           <span>Recorded or scheduled for the selected month</span>
@@ -545,7 +548,7 @@ export default function Loans() {
         <div className="loan-stat peach">
           <div>
             <strong>Pending requests</strong>
-            <FiCalendar />
+            <FiClock />
           </div>
           <b>
             {loading || error

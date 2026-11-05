@@ -61,6 +61,11 @@ async function main() {
     await request('/payslips/generate', 'POST', payload, 201);
     const getSlip = async (id, month) => (await request('/payslips')).find((row) => row.employee_id === id && row.month === month);
     let slip = await getSlip(employee, 9);
+    const initialSalary = (await pool.query(
+      'SELECT effective_from::text FROM salary_history WHERE employee_id = $1',
+      [employee]
+    )).rows[0];
+    assert.equal(initialSalary.effective_from, '2026-09-16', 'Initial salary starts on the joining date');
     assert.equal(Number(slip.net_pay), preview.net_pay); assert.equal(slip.status, 'draft');
     assert.equal(Number(slip.additional_deductions), 0);
     const oldSnapshot = slip.calculation_snapshot;
@@ -150,14 +155,17 @@ async function main() {
     const added = await request('/employees', 'POST', { emp_code: 'E4', name: 'New employee', email: 'new@test.invalid', password: 'test-password', designation: 'Developer', gender: 'female', dob: '2000-01-01', joining_date: '2026-10-01', basic: 10000 }, 201);
     assert.equal((await request(`/employees/${added.id}/salary-history`)).length, 1);
 
-    // First successful daily login is recorded in IST; retries retain the first time.
+    // Signing in no longer marks attendance; the first check-in of the day is recorded in IST and cannot be moved.
     const loginBody = { email: 'new@test.invalid', password: 'test-password' };
     await request('/auth/login', 'POST', { ...loginBody, password: 'wrong' }, 401);
-    assert.equal((await pool.query('SELECT * FROM attendance WHERE employee_id = $1', [added.id])).rowCount, 0);
     await request('/auth/login', 'POST', loginBody);
+    assert.equal((await pool.query('SELECT * FROM attendance WHERE employee_id = $1', [added.id])).rowCount, 0, 'sign-in does not mark attendance');
+    await pool.query("UPDATE employees SET joining_date = '2020-01-01', must_change_password = FALSE WHERE id = $1", [added.id]);
+    const addedToken = jwt.sign({ id: added.id, role: 'employee' }, secret);
+    await request('/attendance/check-in', 'POST', null, 201, addedToken);
     const firstLogin = (await pool.query('SELECT check_in::text AS check_in, work_date::text AS work_date FROM attendance WHERE employee_id = $1', [added.id])).rows[0];
     assert.ok(firstLogin.check_in.startsWith(firstLogin.work_date));
-    await request('/auth/login', 'POST', loginBody);
+    await request('/attendance/check-in', 'POST', null, 409, addedToken);
     assert.equal((await pool.query('SELECT check_in::text AS check_in FROM attendance WHERE employee_id = $1', [added.id])).rows[0].check_in, firstLogin.check_in);
 
     const lateEmployee = (await pool.query(`INSERT INTO employees (emp_code,name,email,password_hash,basic,hra,joining_date)
@@ -182,6 +190,9 @@ async function main() {
     const lateSlip = await getSlip(lateEmployee, 9);
     assert.equal(Number(lateSlip.net_pay), threeLate.net_pay);
     const lateToken = jwt.sign({ id: lateEmployee, role: 'employee' }, secret);
+    assert.equal((await request('/payslips/my', 'GET', null, 200, lateToken)).length, 0, 'Unpublished payslips are hidden from employees');
+    assert.equal((await fetch(`${base}/payslips/${lateSlip.id}/download`, { headers: { Authorization: `Bearer ${lateToken}` } })).status, 404, 'Unpublished PDF is hidden');
+    await pool.query('UPDATE payslips SET published_at = NOW() WHERE published_at IS NULL');
     const myLateSlip = (await request('/payslips/my', 'GET', null, 200, lateToken))[0];
     assert.equal(Number(myLateSlip.late_login_deduction), 600);
     assert.equal(myLateSlip.late_login_reason, threeLate.late_login_reason);

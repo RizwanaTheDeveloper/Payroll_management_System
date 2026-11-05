@@ -1,3 +1,4 @@
+import CheckInCard from '../../components/CheckInCard';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { downloadPayslip } from '../../api';
@@ -379,6 +380,8 @@ export default function Dashboard() {
           </span>
         </button>
       </section>
+
+      <CheckInCard />
 
       {/* =====================================================
           STAT CARDS
@@ -806,8 +809,8 @@ const dashboardStyles = `
     align-items: center;
     padding: 5px 9px;
     border-radius: 999px;
-    background: #eff6ff;
-    color: #2563eb;
+    background: #eef2ff;
+    color: #4f46e5;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.03em;
@@ -860,9 +863,9 @@ const dashboardStyles = `
   }
 
   .refresh-button:hover:not(:disabled) {
-    border-color: #bfdbfe;
-    background: #eff6ff;
-    color: #2563eb;
+    border-color: #c7d2fe;
+    background: #eef2ff;
+    color: #4f46e5;
   }
 
   .refresh-button:disabled {
@@ -930,7 +933,7 @@ const dashboardStyles = `
   }
 
   .stat-blue::after {
-    background: #dbeafe;
+    background: #e0e7ff;
   }
 
   .stat-orange::after {
@@ -971,8 +974,8 @@ const dashboardStyles = `
   }
 
   .stat-blue .stat-icon {
-    background: #eff6ff;
-    color: #2563eb;
+    background: #eef2ff;
+    color: #4f46e5;
   }
 
   .stat-orange .stat-icon {
@@ -1086,8 +1089,8 @@ const dashboardStyles = `
   }
 
   .blue-icon {
-    background: #eff6ff;
-    color: #2563eb;
+    background: #eef2ff;
+    color: #4f46e5;
   }
 
   .purple-icon {
@@ -1096,8 +1099,8 @@ const dashboardStyles = `
   }
 
   .calendar-icon {
-    background: #eff6ff;
-    color: #2563eb;
+    background: #eef2ff;
+    color: #4f46e5;
   }
 
   .card-heading {
@@ -1163,11 +1166,11 @@ const dashboardStyles = `
     background:
       linear-gradient(
         135deg,
-        #eff6ff 0%,
+        #eef2ff 0%,
         #f8fafc 100%
       );
 
-    border: 1px solid #dbeafe;
+    border: 1px solid #e0e7ff;
   }
 
   .payslip-amount span {
@@ -1178,7 +1181,7 @@ const dashboardStyles = `
   .payslip-amount strong {
     display: block;
 
-    color: #1d4ed8;
+    color: #4338ca;
 
     font-size: clamp(25px, 3vw, 31px);
     line-height: 1.1;
@@ -1250,7 +1253,7 @@ const dashboardStyles = `
     border: none;
     border-radius: 9px;
 
-    background: #2563eb;
+    background: #4f46e5;
     color: #ffffff;
 
     display: flex;
@@ -1264,7 +1267,7 @@ const dashboardStyles = `
     cursor: pointer;
 
     box-shadow:
-      0 5px 14px rgba(37, 99, 235, 0.18);
+      0 5px 14px rgba(79, 70, 229, 0.18);
 
     transition:
       background 0.18s ease,
@@ -1272,7 +1275,7 @@ const dashboardStyles = `
   }
 
   .download-button:hover:not(:disabled) {
-    background: #1d4ed8;
+    background: #4338ca;
     transform: translateY(-1px);
   }
 
@@ -1627,8 +1630,8 @@ const dashboardStyles = `
 
     border-radius: 11px;
 
-    background: #eff6ff;
-    color: #2563eb;
+    background: #eef2ff;
+    color: #4f46e5;
 
     display: flex;
     align-items: center;

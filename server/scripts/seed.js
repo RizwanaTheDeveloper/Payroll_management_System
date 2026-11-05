@@ -33,14 +33,20 @@ async function seedUser({ empCode, name, email, password, role, designation }) {
       designation: 'Administrator',
     });
 
-    await seedUser({
-      empCode: process.env.EMPLOYEE_EMP_CODE || 'EMP-001',
-      name: EMPLOYEE_NAME || 'Employee',
-      email: EMPLOYEE_EMAIL,
-      password: EMPLOYEE_PASSWORD,
-      role: 'employee',
-      designation: 'Employee',
-    });
+    // The sample employee is for trying the app out only. Real employees are created in
+    // Admin -> Employees (or with scripts/import-employees.js), so it is opt-in.
+    if (process.env.SEED_SAMPLE_EMPLOYEE === 'true') {
+      await seedUser({
+        empCode: process.env.EMPLOYEE_EMP_CODE || 'EMP-001',
+        name: EMPLOYEE_NAME || 'Employee',
+        email: EMPLOYEE_EMAIL,
+        password: EMPLOYEE_PASSWORD,
+        role: 'employee',
+        designation: 'Employee',
+      });
+    } else {
+      console.log('Sample employee not created (set SEED_SAMPLE_EMPLOYEE=true to create it).');
+    }
   } catch (err) {
     console.error('Seeding failed:', err);
     process.exitCode = 1;

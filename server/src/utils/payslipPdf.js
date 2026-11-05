@@ -350,11 +350,17 @@ module.exports = (res, p) => {
     'application/pdf'
   );
 
+  // File name: "<Full Name> - <Month> <Year>.pdf", safe for headers and file systems.
+  const safeName = String(p.name || p.emp_code || 'Employee')
+    .replace(/[\\/:*?"<>|\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || 'Employee';
+  const fileName = `${safeName} - ${monthName} ${year}.pdf`;
+  const asciiName = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '');
+
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename=payslip-${
-      p.emp_code || p.employee_id
-    }-${year}-${pad(month)}.pdf`
+    `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`
   );
 
   doc.pipe(res);
@@ -553,71 +559,30 @@ module.exports = (res, p) => {
   // record joined by the payslip download route.
   // =======================================================
 
+  // Loss Of Pay days come from the calculation snapshot saved with the payslip.
+  let snapshot = p.calculation_snapshot;
+  if (typeof snapshot === 'string') { try { snapshot = JSON.parse(snapshot); } catch { snapshot = null; } }
+  const lossOfPayDays = Array.isArray(snapshot?.unpaid_dates) ? snapshot.unpaid_dates.length : 0;
+  const money2 = (value) => (Math.round(num(value) * 100) / 100).toString();
+
   const employeeDetails = [
-    ['Payroll status', p.status || 'Generated'], ['Payment status', p.payment_status || 'Not recorded'],
-    ['Employment days', p.employed_days ?? '-'], ['Paid days / calendar days', `${p.net_paid_days ?? '-'} / ${p.month_days ?? '-'}`],
-    [
-      'Employee Name',
-      p.name,
-    ],
-    [
-      'Employee ID',
-      p.emp_code || p.employee_id,
-    ],
-    [
-      'Email',
-      p.email,
-    ],
-    [
-      'Designation',
-      p.designation,
-    ],
-    [
-      'Gender',
-      p.gender,
-    ],
-    [
-      'Date of Birth',
-      formatDate(p.dob),
-    ],
-    [
-      'Date of Joining',
-      formatDate(p.joining_date),
-    ],
-    [
-      'Date of Resignation',
-      p.resignation_date
-        ? formatDate(p.resignation_date)
-        : '-',
-    ],
-    [
-      'PAN',
-      p.pan,
-    ],
-    [
-      'PF UAN',
-      p.pf_uan,
-    ],
-    [
-      'Bank Account No.',
-      mask(p.account_number),
-    ],
-    [
-      'IFSC Code',
-      p.ifsc_code,
-    ],
-    [
-      'Tax Regime',
-      formatTaxRegime(
-        p.tax_regime
-      ),
-    ],
-    [
-      'Employee Status',
-      formatStatus(
-        p.is_active
-      ),
-    ],
+    ['Employee Name', p.name],
+    ['Employee ID', p.emp_code || p.employee_id],
+    ['Designation', p.designation],
+    ['Date of Joining', formatDate(p.joining_date)],
+    ['Email', p.email],
+    ['Date of Birth', formatDate(p.dob)],
+    ['PAN', p.pan],
+    ['PF UAN', p.pf_uan],
+    ['Bank', p.bank_name],
+    ['Bank Branch', p.bank_branch],
+    ['Bank Account No.', mask(p.account_number)],
+    ['IFSC Code', p.ifsc_code],
+    ['Days in Month', p.month_days ?? lastDay],
+    ['Paid Days', money2(p.net_paid_days)],
+    ['Loss Of Pay (days)', money2(lossOfPayDays)],
+    ['Pay Period', `01 ${monthName.slice(0, 3)} ${year} - ${pad(lastDay)} ${monthName.slice(0, 3)} ${year}`],
+    ...(p.resignation_date ? [['Date of Resignation', formatDate(p.resignation_date)], ['', '']] : []),
   ];
 
   const detailLabelW = 100;
@@ -762,8 +727,8 @@ module.exports = (res, p) => {
       ? [[loanRecoveries.length ? 'Salary advance' : 'Loan / salary advance', salaryAdvance]]
       : []),
     ...(p.unpaid_leave_deduction == null
-      ? (num(p.deductions) > 0 ? [['Other / unpaid leave deductions', p.deductions]] : [])
-      : [['Unpaid leave', p.unpaid_leave_deduction], ['Additional deductions', p.additional_deductions]].filter(([, value]) => num(value) > 0)),
+      ? (num(p.deductions) > 0 ? [['Other / Loss Of Pay deductions', p.deductions]] : [])
+      : [['Loss Of Pay', p.unpaid_leave_deduction], ['Additional deductions', p.additional_deductions]].filter(([, value]) => num(value) > 0)),
   ];
 
   const totalEarnings =

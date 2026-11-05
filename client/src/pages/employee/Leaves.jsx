@@ -324,8 +324,8 @@ export default function Leaves() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           flex-shrink: 0;
         }
 
@@ -367,9 +367,9 @@ export default function Leaves() {
         }
 
         .leaves-refresh-btn:hover {
-          border-color: #93c5fd;
+          border-color: #a5b4fc;
           background: #f8fbff;
-          color: #2563eb;
+          color: #4f46e5;
         }
 
         .leaves-refresh-btn:disabled {
@@ -445,8 +445,8 @@ export default function Leaves() {
         }
 
         .leave-stat-icon.blue {
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .leave-stat-icon.orange {
@@ -519,8 +519,8 @@ export default function Leaves() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .leave-panel-icon svg {
@@ -627,10 +627,10 @@ export default function Leaves() {
         .leave-select:focus,
         .leave-input:focus,
         .leave-textarea:focus {
-          border-color: #60a5fa;
+          border-color: #818cf8;
           box-shadow:
             0 0 0 3px
-            rgba(37, 99, 235, .10);
+            rgba(79, 70, 229, .10);
         }
 
         .leave-help {
@@ -663,8 +663,8 @@ export default function Leaves() {
           gap: 6px;
           padding: 7px 10px;
           border-radius: 8px;
-          background: #eff6ff;
-          color: #1d4ed8;
+          background: #eef2ff;
+          color: #4338ca;
           font-size: 11px;
           font-weight: 700;
         }
@@ -700,14 +700,14 @@ export default function Leaves() {
         }
 
         .leave-btn.primary {
-          border: 1px solid #2563eb;
-          background: #2563eb;
+          border: 1px solid #4f46e5;
+          background: #4f46e5;
           color: #fff;
         }
 
         .leave-btn.primary:hover {
-          background: #1d4ed8;
-          border-color: #1d4ed8;
+          background: #4338ca;
+          border-color: #4338ca;
         }
 
         .leave-btn.secondary {
@@ -1086,7 +1086,7 @@ export default function Leaves() {
           padding: 0 13px;
           border: 0;
           border-radius: 9px;
-          background: #2563eb;
+          background: #4f46e5;
           color: #fff;
           font-size: 12px;
           font-weight: 700;
@@ -1094,7 +1094,7 @@ export default function Leaves() {
         }
 
         .leave-retry:hover {
-          background: #1d4ed8;
+          background: #4338ca;
         }
 
         .leave-retry svg {
@@ -1105,8 +1105,8 @@ export default function Leaves() {
         .leave-spinner {
           width: 18px;
           height: 18px;
-          border: 2px solid #dbeafe;
-          border-top-color: #2563eb;
+          border: 2px solid #e0e7ff;
+          border-top-color: #4f46e5;
           border-radius: 50%;
           animation: leavesSpin .8s linear infinite;
         }
@@ -1736,6 +1736,7 @@ export default function Leaves() {
                               l.status
                             )}
                           </span>
+                          {l.status === 'pending' && <small style={{ display: 'block', color: '#64748b' }}>With {l.manager_name || 'administrator'}</small>}
                         </td>
                       </tr>
                     );
@@ -1796,6 +1797,7 @@ export default function Leaves() {
                           l.status
                         )}
                       </span>
+                      {l.status === 'pending' && <small style={{ display: 'block', color: '#64748b' }}>With {l.manager_name || 'administrator'}</small>}
                     </div>
 
                     <div className="leave-mobile-dates">

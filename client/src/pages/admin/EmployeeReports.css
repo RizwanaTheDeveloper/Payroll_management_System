@@ -180,7 +180,7 @@
 }
 .employee-report-table-wrap {
   width: 100%;
-  max-height: 480px;
+  max-height: 70vh;
   overflow: auto;
 }
 .employee-report-table {
@@ -204,6 +204,7 @@
   min-width: 100px;
   max-width: 340px;
   overflow-wrap: anywhere;
+  line-height: 1.4;
 }
 .employee-report-table a {
   color: var(--primary-d);

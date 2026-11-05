@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { FiInfo } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
+import ChangePassword from '../../components/ChangePassword';
 
 const sections = [
   ['company', 'Company'],
@@ -54,7 +55,7 @@ const details = {
 
 export default function Settings() {
   const { user } = useAuth();
-  const isEmployee = user?.role === 'employee';
+  const isEmployee = user?.role !== 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedSection = searchParams.get('section');
   const section = sections.some(([key]) => key === requestedSection) ? requestedSection : isEmployee ? 'company' : 'access';
@@ -93,7 +94,7 @@ export default function Settings() {
           </>
         ) : section === 'company' ? (
           <div className="settings-details">
-            <dl><div><dt>Workspace</dt><dd>5 Gen Payroll</dd></div><div><dt>Company</dt><dd>5 Gen Educon Private Limited</dd></div><div><dt>Signed in as</dt><dd>{user?.name || 'User'}</dd></div><div><dt>Account role</dt><dd>{isEmployee ? 'Employee' : 'Administrator'}</dd></div></dl>
+            <dl><div><dt>Workspace</dt><dd>5 Gen Payroll</dd></div><div><dt>Company</dt><dd>5 Gen Educon Private Limited</dd></div><div><dt>Signed in as</dt><dd>{user?.name || 'User'}</dd></div><div><dt>Account role</dt><dd>{user?.role === 'manager' ? 'Manager' : isEmployee ? 'Employee' : 'Administrator'}</dd></div></dl>
             {isEmployee ? <><p>Contact your payroll administrator to update your personal details, bank information or salary structure.</p><Link className="settings-action" to="/employee/reports">View my monthly report</Link></> : <Link className="settings-action" to="/admin/employees">Manage employees</Link>}
           </div>
         ) : (
@@ -104,10 +105,12 @@ export default function Settings() {
         )}
       </section>
 
-      <div className="settings-info"><FiInfo aria-hidden="true" /><div>
+      {section === 'company' && <section className="settings-card"><div className="settings-card-heading"><h2>Change password</h2></div><ChangePassword heading={false} /></section>}
+
+      {!isEmployee && <div className="settings-info"><FiInfo aria-hidden="true" /><div>
         <strong>{section === 'access' ? 'Account access' : 'Workspace settings'}</strong>
         <p>{section === 'access' ? 'This overview shows the current roles. Custom roles and editable permissions are not available yet.' : 'Use the linked workspaces to manage records. Company-wide policy editing is not available yet.'}</p>
-      </div></div>
+      </div></div>}
     </div>
   );
 }

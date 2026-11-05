@@ -5,7 +5,6 @@ import api from '../../api';
 import { formatReportValue as format, reportCsv } from '../../utils/reportData';
 import { buildEmployeeSummaries, employeeDetailReports, employeeReportCsv, employeeSummaryColumns } from '../../utils/employeeReportData';
 import './EmployeeReports.css';
-import MonthNavigation from '../../components/MonthNavigation';
 import { useAuth } from '../../context/AuthContext';
 
 const currentPeriod = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }).slice(0, 7);
@@ -95,7 +94,6 @@ export default function EmployeeReports({ self = false }) {
       </div>
     </div>
     <div className="employee-report-filters employee-report-controls"><label>Report month<input type="month" min="2000-01" max="2100-12" value={period} onChange={(event) => { if (validPeriod(event.target.value)) { const next = new URLSearchParams(params); next.set('period', event.target.value); setParams(next); } }} /></label>
-      <MonthNavigation period={period} onChange={(value) => { const next = new URLSearchParams(params); next.set('period', value); setParams(next); }} />
       {!employeeId && <><label>Department<select value={department} onChange={(event) => setDepartment(event.target.value)}><option value="">All departments</option>{departments.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
         <label>Find employee<input type="search" value={query} placeholder="Employee ID or name" onChange={(event) => setQuery(event.target.value)} /></label></>}
     </div>
@@ -118,7 +116,7 @@ export default function EmployeeReports({ self = false }) {
       ]} note="Leave requests and days are separate counts. Only days within the selected month are included." />
       <Metrics title="Payroll and deductions" row={selected} fields={[
         ['payroll_status', 'Payslip status', 'text'], ['workflow_status', 'Approval status', 'text'], ['payment_status', 'Payment status', 'text'], ['paid_on', 'Payment date', 'date'], ['payment_reference', 'Payment reference', 'text'], ['employed_days', 'Employment days'], ['net_paid_days', 'Paid days'], ['payslip_count', 'Payslips generated'], ['basic', 'Basic salary', 'money'], ['hra', 'HRA', 'money'], ['special_allowance', 'Special allowance', 'money'], ['lta', 'LTA', 'money'], ['other_allowances', 'Other allowances', 'money'], ['allowances', 'Additional allowances', 'money'],
-        ['gross', 'Gross salary', 'money'], ['epf', 'EPF', 'money'], ['professional_tax', 'Professional tax', 'money'], ['loan_deduction', 'Loan deduction', 'money'], ['advance_deduction', 'Advance deduction', 'money'], ['unpaid_leave_deduction', 'Unpaid leave deduction', 'money'], ['additional_deductions', 'Additional deductions', 'money'], ['other_deductions', 'Other / unpaid leave total', 'money'], ['total_deductions', 'Total deductions', 'money'], ['net_pay', 'Take-home pay', 'money']
+        ['gross', 'Gross salary', 'money'], ['epf', 'EPF', 'money'], ['professional_tax', 'Professional tax', 'money'], ['loan_deduction', 'Loan deduction', 'money'], ['advance_deduction', 'Advance deduction', 'money'], ['unpaid_leave_deduction', 'Loss Of Pay deduction', 'money'], ['additional_deductions', 'Additional deductions', 'money'], ['other_deductions', 'Other / Loss Of Pay total', 'money'], ['total_deductions', 'Total deductions', 'money'], ['net_pay', 'Take-home pay', 'money']
       ]} note="Amounts come from the saved payslip for this month. A missing payslip shows a dash." />
       <Metrics title="Loans and salary advances" row={selected} fields={[
         ['loan_requests', 'Loan requests through month'], ['approved_loans', 'Approved loans, including repaid'], ['pending_loans', 'Pending loans'], ['rejected_loans', 'Rejected loans'], ['completed_loans', 'Fully repaid loans'], ['loan_balance', 'Approved loan balance', 'money'], ['loan_recovered', 'Loans recovered through month', 'money'],

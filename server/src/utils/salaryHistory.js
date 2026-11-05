@@ -3,9 +3,9 @@ const FIELDS = ['ctc', 'basic', 'hra', 'special_allowance', 'lta', 'other_allowa
 
 async function baseline(client, employee, actorId) {
   await client.query(`INSERT INTO salary_history (employee_id, effective_from, ${FIELDS.join(',')}, actor_id, reason)
-    SELECT $1, '2000-01-01', ${FIELDS.map((_, i) => `$${i + 2}`).join(',')}, $10, 'Initial salary structure'
+    SELECT $1, COALESCE($10::date, DATE '2000-01-01'), ${FIELDS.map((_, i) => `$${i + 2}`).join(',')}, $11, 'Initial salary structure'
     WHERE NOT EXISTS (SELECT 1 FROM salary_history WHERE employee_id = $1)`,
-  [employee.id, ...FIELDS.map((key) => employee[key] || 0), actorId]);
+  [employee.id, ...FIELDS.map((key) => employee[key] || 0), employee.joining_date || null, actorId]);
 }
 
 async function recordChange(client, before, after, body, actorId) {

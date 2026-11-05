@@ -1,5 +1,7 @@
+import AttendanceRequests from '../../components/AttendanceRequests';
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../api';
+import CheckInCard from '../../components/CheckInCard';
 
 import {
   FiActivity,
@@ -227,8 +229,8 @@ export default function Attendance() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           flex-shrink: 0;
         }
 
@@ -270,9 +272,9 @@ export default function Attendance() {
         }
 
         .attendance-refresh-btn:hover {
-          border-color: #93c5fd;
+          border-color: #a5b4fc;
           background: #f8fbff;
-          color: #2563eb;
+          color: #4f46e5;
         }
 
         .attendance-refresh-btn:disabled {
@@ -346,8 +348,8 @@ export default function Attendance() {
         }
 
         .attendance-summary-icon.blue {
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .attendance-summary-icon.green {
@@ -483,10 +485,10 @@ export default function Attendance() {
         }
 
         .attendance-month-input:focus {
-          border-color: #60a5fa;
+          border-color: #818cf8;
           box-shadow:
             0 0 0 3px
-            rgba(37, 99, 235, .10);
+            rgba(79, 70, 229, .10);
         }
 
         .attendance-filter-actions {
@@ -510,14 +512,14 @@ export default function Attendance() {
         }
 
         .attendance-filter-btn:hover {
-          border-color: #93c5fd;
-          color: #2563eb;
+          border-color: #a5b4fc;
+          color: #4f46e5;
           background: #f8fbff;
         }
 
         .attendance-filter-btn.active {
-          border-color: #2563eb;
-          background: #2563eb;
+          border-color: #4f46e5;
+          background: #4f46e5;
           color: #fff;
         }
 
@@ -533,7 +535,7 @@ export default function Attendance() {
         }
 
         .attendance-clear-btn:hover {
-          color: #2563eb;
+          color: #4f46e5;
         }
 
         .attendance-records-card {
@@ -568,8 +570,8 @@ export default function Attendance() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .attendance-record-icon svg {
@@ -877,7 +879,7 @@ export default function Attendance() {
           padding: 0 13px;
           border: 0;
           border-radius: 9px;
-          background: #2563eb;
+          background: #4f46e5;
           color: #fff;
           font-size: 12px;
           font-weight: 700;
@@ -885,7 +887,7 @@ export default function Attendance() {
         }
 
         .attendance-retry-btn:hover {
-          background: #1d4ed8;
+          background: #4338ca;
         }
 
         .attendance-retry-btn svg {
@@ -906,8 +908,8 @@ export default function Attendance() {
         .attendance-spinner {
           width: 18px;
           height: 18px;
-          border: 2px solid #dbeafe;
-          border-top-color: #2563eb;
+          border: 2px solid #e0e7ff;
+          border-top-color: #4f46e5;
           border-radius: 50%;
           animation: attendanceSpin .8s linear infinite;
         }
@@ -1085,6 +1087,8 @@ export default function Attendance() {
       </div>
 
       {/* Summary Cards */}
+      <CheckInCard onChange={() => load(true)} />
+
       <div className="attendance-summary">
         <div className="attendance-summary-card">
           <div className="attendance-summary-icon blue">
@@ -1141,7 +1145,7 @@ export default function Attendance() {
             </div>
 
             <div className="attendance-summary-sub">
-              Recorded unpaid leave days
+              Unpaid leave days
             </div>
           </div>
         </div>
@@ -1510,6 +1514,7 @@ export default function Attendance() {
           </>
         )}
       </div>
+      <AttendanceRequests />
     </div>
   );
 }

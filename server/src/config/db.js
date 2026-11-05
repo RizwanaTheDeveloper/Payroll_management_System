@@ -6,6 +6,21 @@ const config = process.env.DATABASE_URL
   ? { connectionString: process.env.DATABASE_URL }
   : {};
 
+// Hosted PostgreSQL (Render, etc.) only accepts TLS connections from outside its network and
+// drops idle ones, which surfaces as "read ECONNRESET". Use TLS for any non-local host
+// (override with DATABASE_SSL=false/true; set DATABASE_SSL_STRICT=true to verify the certificate)
+// and keep pooled connections alive. An sslmode in DATABASE_URL still takes precedence.
+let databaseHost = process.env.PGHOST || '';
+try { if (config.connectionString) databaseHost = new URL(config.connectionString).hostname; } catch { /* validated below */ }
+const isLocalHost = ['', 'localhost', '127.0.0.1', '::1', '[::1]'].includes(databaseHost);
+const useSsl = process.env.DATABASE_SSL ? process.env.DATABASE_SSL !== 'false' : !isLocalHost;
+if (useSsl) config.ssl = { rejectUnauthorized: process.env.DATABASE_SSL_STRICT === 'true' };
+config.keepAlive = true;
+config.keepAliveInitialDelayMillis = 10000;
+config.idleTimeoutMillis = 20000;
+config.connectionTimeoutMillis = 15000;
+config.max = 10;
+
 if (config.connectionString) {
   try {
     const url = new URL(config.connectionString);

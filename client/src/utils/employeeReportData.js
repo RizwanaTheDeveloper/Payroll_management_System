@@ -111,13 +111,13 @@ export function employeeDetailReports(data, period, employeeId) {
 export function employeeReportCsv(summary, details, metadata) {
   const summaryColumns = [
     ...employeeSummaryColumns,
-    date('paid_on', 'Payment date'), text('payment_reference', 'Payment reference'), count('employed_days', 'Employment days'), count('net_paid_days', 'Paid days'), money('unpaid_leave_deduction', 'Unpaid leave deduction'), money('additional_deductions', 'Additional deductions'),
+    date('paid_on', 'Payment date'), text('payment_reference', 'Payment reference'), count('employed_days', 'Employment days'), count('net_paid_days', 'Paid days'), money('unpaid_leave_deduction', 'Loss Of Pay deduction'), money('additional_deductions', 'Additional deductions'),
     ...[count('attendance_records', 'Attendance records'), count('worked_hours', 'Worked hours'), count('missing_punches', 'Missing punches'), count('invalid_punches', 'Invalid punch pairs'),
       count('approved_leave_requests', 'Approved leave requests'), count('requested_days', 'Requested leave days'), count('approved_days', 'Approved leave days'),
       count('pending_days', 'Pending leave days'), count('rejected_days', 'Rejected leave days'), count('paid_allowance', 'Monthly paid allowance'), count('paid_balance', 'Paid leave balance'),
       count('payslip_count', 'Payslips'), money('gross', 'Gross salary'), money('total_deductions', 'Total deductions'), money('basic', 'Basic salary'), money('hra', 'HRA'),
       money('special_allowance', 'Special allowance'), money('lta', 'LTA'), money('other_allowances', 'Other allowances'), money('allowances', 'Additional allowances'),
-      money('epf', 'EPF'), money('professional_tax', 'Professional tax'), money('other_deductions', 'Other / unpaid leave deductions'), money('loan_deduction', 'Loan deduction'), money('advance_deduction', 'Advance deduction'),
+      money('epf', 'EPF'), money('professional_tax', 'Professional tax'), money('other_deductions', 'Other / Loss Of Pay deductions'), money('loan_deduction', 'Loan deduction'), money('advance_deduction', 'Advance deduction'),
       count('loan_requests', 'Loan requests through month'), count('advance_requests', 'Advance requests through month'), count('pending_loans', 'Pending loans'), count('rejected_loans', 'Rejected loans'),
       count('approved_loans', 'Approved loans including repaid'), count('completed_loans', 'Fully repaid loans'), count('approved_advances', 'Approved advances including repaid'), count('completed_advances', 'Fully repaid advances'),
       count('pending_advances', 'Pending advances'), count('rejected_advances', 'Rejected advances'), money('loan_recovered', 'Loans recovered through month'), money('advance_recovered', 'Advances recovered through month')]

@@ -8,3 +8,5 @@ build/
 
 npm-debug.log*
 .DS_Store
+# Imported rosters and generated credentials (personal data)
+server/scripts/data/

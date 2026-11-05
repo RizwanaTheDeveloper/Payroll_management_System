@@ -110,6 +110,7 @@ async function main() {
     const reports = reportUtils.buildReports(data, { period: '2026-09' });
     const advanceReport = reports.find((report) => report.id === 'advance-deductions');
     assert.equal(Number(advanceReport.rows.find((row) => row.employee_id === employee).salary_advance), 250.50);
+    await pool.query('UPDATE payslips SET published_at = NOW() WHERE published_at IS NULL');
     const pdf = await fetch(`${base}/payslips/${slip.id}/download`, { headers: { Authorization: `Bearer ${employeeToken}` } });
     assert.equal(pdf.status, 200); assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 4).toString(), '%PDF');
     await request(`/payslips/${slip.id}`, 'DELETE');

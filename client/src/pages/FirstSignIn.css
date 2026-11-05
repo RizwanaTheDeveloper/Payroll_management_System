@@ -1,0 +1,17 @@
+#root .first-signin { position: fixed; inset: 0; overflow-y: auto; max-width: none; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 24px; padding: 32px 16px; background: linear-gradient(135deg, #ece8ff 0%, #e1ecff 50%, #def6ee 100%); }
+.first-signin-brand { display: flex; align-items: center; gap: 12px; }
+.first-signin-brand > div { display: grid; gap: 2px; }
+.first-signin-brand strong { font-size: 19px; color: var(--text); }
+.first-signin-brand span:not(.design-logo) { font-size: 13px; color: var(--muted); }
+.first-signin-card { flex-shrink: 0; width: min(100%, 560px); background: #fff; border: 1px solid var(--border); border-radius: 22px; box-shadow: 0 18px 50px rgb(23 43 77 / 12%); overflow: hidden; }
+.first-signin-head { display: flex; gap: 16px; padding: 28px 28px 0; }
+.first-signin-icon { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px; background: var(--primary-l); color: var(--primary); }
+.first-signin-icon svg { width: 22px; height: 22px; }
+.first-signin-head h1 { margin: 0 0 6px; font-size: 24px; color: var(--text); }
+.first-signin-head p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.first-signin-card .change-password { max-width: none; padding: 24px 28px 28px; }
+.first-signin-foot { margin: 0; color: var(--muted); font-size: 14px; }
+#root .first-signin-foot button { padding: 0; background: none; color: var(--primary-d); font-weight: 600; }
+#root .first-signin-foot button:hover { background: none; text-decoration: underline; }
+
+.first-signin-brand, .first-signin-foot { flex-shrink: 0; }

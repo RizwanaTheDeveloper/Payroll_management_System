@@ -651,8 +651,8 @@ export default function Dashboard() {
 
 
         .dashboard-stat.blue .stat-icon {
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .dashboard-stat.amber .stat-icon {
@@ -672,7 +672,7 @@ export default function Dashboard() {
 
 
         .dashboard-stat.blue::after {
-          background: #2563eb;
+          background: #4f46e5;
         }
 
         .dashboard-stat.amber::after {
@@ -977,8 +977,8 @@ export default function Dashboard() {
         }
 
         .leave-casual {
-          background: #eff6ff;
-          color: #1d4ed8;
+          background: #eef2ff;
+          color: #4338ca;
         }
 
         .leave-sick {

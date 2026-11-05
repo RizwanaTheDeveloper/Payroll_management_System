@@ -159,12 +159,12 @@ export function buildReports(data, { period, department = '', employeeId = '' })
 
   add('deductions', 'deduction-summary', 'Employee deduction summary', [...identity, cash('epf', 'PF'),
     cash('professional_tax', 'Professional tax'), cash('loan_recovery', 'Loan recovery'), cash('salary_advance', 'Salary advance'),
-    cash('unpaid_leave_deduction', 'Unpaid leave'), cash('additional_deductions', 'Additional deductions'), cash('deductions', 'Other / unpaid leave total'), cash('total_deductions', 'Total deductions')], payroll, salaryNote);
+    cash('unpaid_leave_deduction', 'Loss Of Pay'), cash('additional_deductions', 'Additional deductions'), cash('deductions', 'Other / Loss Of Pay total'), cash('total_deductions', 'Total deductions')], payroll, salaryNote);
   for (const [id, title, key, label] of [
     ['pf', 'PF deduction report', 'epf', 'Employee PF'], ['pt', 'Professional Tax report', 'professional_tax', 'Professional tax'],
     ['loan-deductions', 'Loan deduction report', 'loan_recovery', 'Loan recovery'],
     ['advance-deductions', 'Salary advance deductions', 'salary_advance', 'Salary advance'],
-    ['other-deductions', 'Other deduction report', 'deductions', 'Other / unpaid leave'],
+    ['other-deductions', 'Other deduction report', 'deductions', 'Other / Loss Of Pay'],
   ]) {
     add('deductions', id, title, [...identity, cash(key, label)], payroll.filter((p) => num(p[key]) !== 0),
       `${salaryNote}${id === 'pf' ? ' Employer PF contributions are not recorded.' : ''}`);
@@ -254,6 +254,11 @@ export function formatReportValue(value, type = 'text') {
     const part = String(value).slice(0, 10);
     const [y, m, d] = part.split('-').map(Number);
     return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+  // Plain words from the database (casual, pending, full, paid_leave) read as labels.
+  if (type === 'text' && /^[a-z]+(_[a-z]+)*$/.test(String(value))) {
+    const words = String(value).replace(/_/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
   }
   return String(value);
 }

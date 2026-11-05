@@ -6,23 +6,18 @@ const apiBaseUrl = trimmedApiUrl.endsWith('/api')
   ? trimmedApiUrl
   : `${trimmedApiUrl}/api`;
 
+// Sign-in is a server-side session carried by an httpOnly cookie. The browser stores
+// no token or profile (nothing in localStorage, sessionStorage or JavaScript-readable cookies).
 const api = axios.create({
   baseURL: apiBaseUrl,
+  withCredentials: true,
+  headers: { 'X-Requested-With': 'payroll-web' },
 });
 
-api.interceptors.request.use((cfg) => {
-  const t = localStorage.getItem('token');
-
-  if (t) {
-    cfg.headers.Authorization = `Bearer ${t}`;
-  }
-
-  return cfg;
-});
+const SESSION_CHECK_URLS = ['/auth/login', '/auth/logout', '/auth/me'];
 
 api.interceptors.response.use((response) => response, (error) => {
-  if (error.response?.status === 401 && error.config?.url !== '/auth/login' && localStorage.getItem('token')) {
-    localStorage.removeItem('token'); localStorage.removeItem('user');
+  if (error.response?.status === 401 && !SESSION_CHECK_URLS.includes(error.config?.url)) {
     window.dispatchEvent(new Event('payroll:session-expired'));
   }
   return Promise.reject(error);
@@ -37,7 +32,15 @@ export async function downloadPayslip(id) {
 
   const a = document.createElement('a');
   a.href = url;
-  a.download = `payslip-${id}.pdf`;
+  // Use the "<Full Name> - <Month> <Year>.pdf" name chosen by the server.
+  const header = res.headers?.['content-disposition'] || '';
+  const encoded = header.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const plain = header.match(/filename="([^"]+)"/i)?.[1];
+  let fileName = plain || `payslip-${id}.pdf`;
+  if (encoded) {
+    try { fileName = decodeURIComponent(encoded); } catch { /* keep the plain name */ }
+  }
+  a.download = fileName;
   a.click();
 
   URL.revokeObjectURL(url);

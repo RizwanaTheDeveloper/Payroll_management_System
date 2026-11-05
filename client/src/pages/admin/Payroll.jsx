@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api, { downloadPayslip } from '../../api';
 import { loanDeductionItems } from '../../utils/payrollDeductions';
-import MonthNavigation from '../../components/MonthNavigation';
 import PayrollChecklist from '../../components/PayrollChecklist';
 import PayrollWorkflow from '../../components/PayrollWorkflow';
 import './PayrollImprovements.css';
@@ -93,7 +92,7 @@ export default function Payroll() {
         : []
     ).filter(
       (employee) =>
-        employee.role === 'employee' &&
+        ['employee', 'manager'].includes(employee.role) &&
         (employee.is_active !== false || employee.resignation_date)
     );
 
@@ -247,7 +246,8 @@ export default function Payroll() {
     gross: ['basic','hra','special_allowance','lta','other_allowances','allowances'].reduce((sum, key) => sum + num(existingPayslip[key]), 0),
     total_deductions: ['epf','professional_tax','advance','deductions'].reduce((sum, key) => sum + num(existingPayslip[key]), 0),
   } : preview;
-  const salary = displayPreview || {};
+  // Show the saved salary structure straight away; exact figures replace it once the preview returns.
+  const salary = displayPreview || (selectedEmployee && !allEmployeesSelected ? selectedEmployee : {});
   const calculation = {
     gross: displayPreview?.gross || 0, advance: displayPreview?.advance || 0,
     loanDeductions: displayPreview?.calculation_snapshot?.recoveries || [],
@@ -297,10 +297,10 @@ export default function Payroll() {
     setError('');
     setMessage('');
 
-    if (!form.employee_id || (mode === 'update' && allEmployeesSelected)) {
+    if (!form.employee_id) {
       setError(
         mode === 'update'
-          ? 'Please select an employee to update.'
+          ? 'Please select an employee or All employees to update.'
           : 'Please select an employee or All employees.'
       );
       return;
@@ -460,8 +460,8 @@ export default function Payroll() {
           width: 50px;
           height: 50px;
           border-radius: 14px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -535,8 +535,8 @@ export default function Payroll() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .summary-label {
@@ -579,8 +579,8 @@ export default function Payroll() {
           width: 36px;
           height: 36px;
           border-radius: 10px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -636,8 +636,8 @@ export default function Payroll() {
 
         .form-input:focus,
         .form-select:focus {
-          border-color: #60a5fa;
-          box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+          border-color: #818cf8;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229,.1);
         }
 
         .form-input.readonly {
@@ -689,8 +689,8 @@ export default function Payroll() {
           grid-column: 1 / -1;
           padding: 10px 12px;
           border-radius: 9px;
-          background: #eff6ff;
-          color: #1d4ed8;
+          background: #eef2ff;
+          color: #4338ca;
           font-size: 11px;
           line-height: 1.5;
         }
@@ -711,7 +711,7 @@ export default function Payroll() {
           padding: 0 18px;
           border: 0;
           border-radius: 10px;
-          background: #2563eb;
+          background: #4f46e5;
           color: white;
           font-weight: 700;
           cursor: pointer;
@@ -745,7 +745,7 @@ export default function Payroll() {
 
         .employee-card {
           padding: 14px;
-          border: 1px solid #dbeafe;
+          border: 1px solid #e0e7ff;
           border-radius: 12px;
           background: #f8fbff;
           margin-bottom: 16px;
@@ -764,8 +764,8 @@ export default function Payroll() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #dbeafe;
-          color: #2563eb;
+          background: #e0e7ff;
+          color: #4f46e5;
         }
 
         .employee-card strong {
@@ -825,7 +825,7 @@ export default function Payroll() {
         }
 
         .gross strong {
-          color: #2563eb;
+          color: #4f46e5;
         }
 
         .deduction strong {
@@ -895,15 +895,19 @@ export default function Payroll() {
 
         table {
           width: 100%;
-          min-width: 850px;
+          min-width: 780px;
           border-collapse: collapse;
+        }
+
+        .table-wrap :is(th, td) {
+          white-space: nowrap;
         }
 
         th {
           padding: 12px 18px;
           background: #f8fafc;
           color: #64748b;
-          font-size: 10px;
+          font-size: 12px;
           text-align: left;
           text-transform: uppercase;
         }
@@ -937,9 +941,9 @@ export default function Payroll() {
         }
 
         .download-btn:hover {
-          color: #2563eb;
-          border-color: #93c5fd;
-          background: #eff6ff;
+          color: #4f46e5;
+          border-color: #a5b4fc;
+          background: #eef2ff;
         }
 
         .download-btn:disabled {
@@ -1054,7 +1058,6 @@ export default function Payroll() {
 
       {/* SUMMARY */}
 
-      <MonthNavigation period={`${form.year}-${String(form.month).padStart(2, '0')}`} onChange={(period) => { const [year, month] = period.split('-').map(Number); setForm((previous) => ({ ...previous, year, month })); }} />
       <PayrollChecklist month={form.month} year={form.year} revision={revision} />
 
       <div className="summary-grid">
@@ -1316,6 +1319,13 @@ export default function Payroll() {
                 )}
               </button>
 
+              {allEmployeesSelected && (
+                <button type="submit" value="update" className="generate-btn" disabled={saving}
+                  onClick={(e) => { if (!window.confirm('Recalculate all existing draft payslips for this month with the latest EPF and Professional Tax? Finalized or paid payslips are not changed.')) e.preventDefault(); }}>
+                  <FiRefreshCw /> Update All Draft Payslips (EPF &amp; PT)
+                </button>
+              )}
+
               {/*
               <button
                 type="submit"
@@ -1396,7 +1406,7 @@ export default function Payroll() {
                     {form.year}. Status: {existingPayslip.status}. {existingPayslip.status === 'finalized' ? 'Reopen with a correction reason to change this payslip.' : 'Saving changes returns it to draft for review.'}
                   </div>
                 )}
-                {existingPayslip && existingPayslip.additional_deductions == null && num(existingPayslip.deductions) > 0 && <p className="payroll-policy-note">This older payslip stores unpaid leave and other deductions as a combined amount. Verify the additional deduction field before recalculating it.</p>}
+                {existingPayslip && existingPayslip.additional_deductions == null && num(existingPayslip.deductions) > 0 && <p className="payroll-policy-note">This older payslip stores Loss Of Pay and other deductions as a combined amount. Verify the additional deduction field before recalculating it.</p>}
 
                 <div className="calc-list">
                   {displayPreview?.warnings?.map((warning) => <p key={warning} className="payroll-workflow-error" role="status">{warning}</p>)}
@@ -1460,13 +1470,13 @@ export default function Payroll() {
                     </strong>
                   </div>
 
-                  <div className="calc-row deduction"><span>Unpaid leave</span><strong>-{money(salary.unpaid_leave_deduction)}</strong></div>
+                  <div className="calc-row deduction"><span>Loss Of Pay</span><strong className={num(salary.unpaid_leave_deduction) > 0 ? undefined : 'muted-zero'}>{num(salary.unpaid_leave_deduction) > 0 ? '-' : ''}{money(salary.unpaid_leave_deduction)}</strong></div>
                   {num(salary.late_login_deduction) > 0 && <><div className="calc-row deduction"><span>Late login (half day)</span><strong>-{money(salary.late_login_deduction)}</strong></div><p className="payroll-policy-note">{salary.late_login_reason}</p></>}
-                  <div className="calc-row deduction"><span>Additional deductions</span><strong>-{money(salary.additional_deductions)}</strong></div>
+                  <div className="calc-row deduction"><span>Additional deductions</span><strong className={num(salary.additional_deductions) > 0 ? undefined : 'muted-zero'}>{num(salary.additional_deductions) > 0 ? '-' : ''}{money(salary.additional_deductions)}</strong></div>
                   <div className="calc-row deduction">
                     <span>EPF</span>
-                    <strong>
-                      -{money(salary.epf)}
+                    <strong className={num(salary.epf) > 0 ? undefined : 'muted-zero'}>
+                      {num(salary.epf) > 0 ? '-' : ''}{money(salary.epf)}
                     </strong>
                   </div>
 
@@ -1474,8 +1484,8 @@ export default function Payroll() {
                     <span>
                       Professional Tax
                     </span>
-                    <strong>
-                      -{money(
+                    <strong className={num(salary.professional_tax) > 0 ? undefined : 'muted-zero'}>
+                      {num(salary.professional_tax) > 0 ? '-' : ''}{money(
                         salary.professional_tax
                       )}
                     </strong>
@@ -1502,8 +1512,8 @@ export default function Payroll() {
                     <span>
                       Total Deductions
                     </span>
-                    <strong>
-                      -{money(
+                    <strong className={num(calculation.totalDeductions) > 0 ? undefined : 'muted-zero'}>
+                      {num(calculation.totalDeductions) > 0 ? '-' : ''}{money(
                         calculation.totalDeductions
                       )}
                     </strong>
@@ -1625,8 +1635,8 @@ export default function Payroll() {
                   <th>Period</th>
                   <th>Basic</th>
                   <th>EPF</th>
-                  <th>Professional Tax</th>
-                  <th>Loan deductions (incl. interest)</th>
+                  <th>Prof. tax</th>
+                  <th>Loan deduction</th>
                   <th>Net Pay</th>
                   <th>Payroll status</th>
                   <th>Payment</th>

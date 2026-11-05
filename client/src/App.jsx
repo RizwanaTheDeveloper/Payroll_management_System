@@ -1,27 +1,36 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
-import AdvancesPage from './components/AdvancesPage';
+import FirstSignIn from './pages/FirstSignIn';
+const AdvancesPage = lazy(() => import('./components/AdvancesPage'));
 
 import Login from './pages/Login';
 
-import AdminDashboard from './pages/admin/Dashboard';
-import Employees from './pages/admin/Employees';
-import AdminPayroll from './pages/admin/Payroll';
-import AdminLeaves from './pages/admin/Leaves';
-import AdminAttendance from './pages/admin/Attendance';
-import Loans from './pages/admin/Loans';
-import Reports from './pages/admin/Reports';
-import EmployeeReports from './pages/admin/EmployeeReports';
-import Settings from './pages/admin/Settings';
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
+const Employees = lazy(() => import('./pages/admin/Employees'));
+const AdminPayroll = lazy(() => import('./pages/admin/Payroll'));
+const AdminLeaves = lazy(() => import('./pages/admin/Leaves'));
+const AdminAttendance = lazy(() => import('./pages/admin/Attendance'));
+const Loans = lazy(() => import('./pages/admin/Loans'));
+const Reports = lazy(() => import('./pages/admin/Reports'));
+const EmployeeReports = lazy(() => import('./pages/admin/EmployeeReports'));
+const Settings = lazy(() => import('./pages/admin/Settings'));
 
-import EmpDashboard from './pages/employee/Dashboard';
-import Payslips from './pages/employee/Payslips';
-import Attendance from './pages/employee/Attendance';
-import Leaves from './pages/employee/Leaves';
-import EmployeeLoans from './pages/employee/Loans';
+const EmpDashboard = lazy(() => import('./pages/employee/Dashboard'));
+const Payslips = lazy(() => import('./pages/employee/Payslips'));
+const Attendance = lazy(() => import('./pages/employee/Attendance'));
+const Leaves = lazy(() => import('./pages/employee/Leaves'));
+const TeamLeaves = lazy(() => import('./pages/admin/Leaves'));
+const TeamAttendance = lazy(() => import('./pages/admin/Attendance'));
+const TeamDashboard = lazy(() => import('./pages/manager/TeamDashboard'));
+const TeamRequests = lazy(() => import('./pages/manager/TeamRequests'));
+const TeamReport = lazy(() => import('./pages/manager/TeamReport'));
+const TeamPayroll = lazy(() => import('./pages/manager/TeamPayroll'));
+const TeamAttendanceRequests = lazy(() => import('./pages/manager/TeamAttendanceRequests'));
+const Approvals = lazy(() => import('./pages/admin/Approvals'));
+const EmployeeLoans = lazy(() => import('./pages/employee/Loans'));
 
 /* React Icons */
 import {
@@ -30,6 +39,7 @@ import {
   FiClipboard,
   FiClock,
   FiCalendar,
+  FiEdit3,
   FiFileText,
   FiSettings
 } from 'react-icons/fi';
@@ -41,15 +51,16 @@ import { FaHandHoldingUsd, FaRupeeSign } from 'react-icons/fa';
 --------------------------------------- */
 
 const adminLinks = [
-  ['/admin', 'Overview', <FiHome />],
-  ['/admin/employees', 'Employees', <FiUsers />],
-  ['/admin/payroll', 'Payroll', <FiClipboard />],
-  ['/admin/attendance', 'Attendance', <FiClock />],
-  ['/admin/leaves', 'Leave', <FiCalendar />],
-  ['/admin/loans', 'Loans', <FaHandHoldingUsd />],
-  ['/admin/advances', 'Advances', <FaRupeeSign />],
-  ['/admin/reports', 'Reports', <FiFileText />],
-  ['/admin/settings', 'Settings', <FiSettings />],
+  ['/admin', 'Overview', <FiHome />, 'Workspace'],
+  ['/admin/approvals', 'Approvals', <FiClipboard />, 'Workspace'],
+  ['/admin/employees', 'Employees', <FiUsers />, 'People'],
+  ['/admin/attendance', 'Attendance', <FiClock />, 'People'],
+  ['/admin/leaves', 'Leave', <FiCalendar />, 'People'],
+  ['/admin/payroll', 'Payroll', <FiClipboard />, 'Money'],
+  ['/admin/loans', 'Loans', <FaHandHoldingUsd />, 'Money'],
+  ['/admin/advances', 'Advances', <FaRupeeSign />, 'Money'],
+  ['/admin/reports', 'Reports', <FiFileText />, 'Reports & setup'],
+  ['/admin/settings', 'Settings', <FiSettings />, 'Reports & setup'],
 ];
 
 
@@ -57,11 +68,30 @@ const adminLinks = [
    Employee Navigation
 --------------------------------------- */
 
+// Managers use the employee portal plus a team approvals page.
+const managerLinks = [
+  ['/employee/team', 'My team', <FiUsers />, 'Team', true],
+  ['/employee/team-attendance', 'Team attendance', <FiClock />, 'Team'],
+  ['/employee/team-attendance-requests', 'Corrections', <FiEdit3 />, 'Team', true],
+  ['/employee/team-leaves', 'Team leave', <FiCalendar />, 'Team', true],
+  ['/employee/team-requests', 'Team loans', <FaHandHoldingUsd />, 'Team'],
+  ['/employee/team-payroll', 'Team payroll', <FaRupeeSign />, 'Team', true],
+  ['/employee/team-report', 'Team report', <FiClipboard />, 'Team'],
+  ['/employee', 'My home', <FiHome />, 'My work'],
+  ['/employee/attendance', 'My attendance', <FiClock />, 'My work'],
+  ['/employee/leaves', 'My leave', <FiCalendar />, 'My work'],
+  ['/employee/payslips', 'My pay', <FiFileText />, 'My work'],
+  ['/employee/loans', 'Loans', <FaHandHoldingUsd />, 'My work'],
+  ['/employee/advances', 'Advances', <FaRupeeSign />, 'My work'],
+  ['/employee/reports', 'Reports', <FiClipboard />, 'My work'],
+  ['/employee/settings', 'Settings', <FiSettings />, 'My work'],
+];
+
 const empLinks = [
-  ['/employee', 'Home', <FiHome />],
-  ['/employee/attendance', 'Attendance', <FiClock />],
-  ['/employee/leaves', 'Leave', <FiCalendar />],
-  ['/employee/payslips', 'My pay', <FiFileText />],
+  ['/employee', 'Home', <FiHome />, null, true],
+  ['/employee/attendance', 'Attendance', <FiClock />, null, true],
+  ['/employee/leaves', 'Leave', <FiCalendar />, null, true],
+  ['/employee/payslips', 'My pay', <FiFileText />, null, true],
   ['/employee/loans', 'Loans', <FaHandHoldingUsd />],
   ['/employee/advances', 'Advances', <FaRupeeSign />],
   ['/employee/reports', 'Reports', <FiClipboard />],
@@ -70,7 +100,7 @@ const empLinks = [
 
 
 export default function App() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     // Blur before the native wheel action so number values stay unchanged
@@ -85,11 +115,17 @@ export default function App() {
     return () => document.removeEventListener('wheel', preventNumberWheelChange, { capture: true });
   }, []);
 
+  if (loading) return <main style={{ padding: 24 }} role="status">Loading…</main>;
+
+  // Accounts issued with a temporary password must replace it before using the app.
+  if (user?.must_change_password) return <FirstSignIn />;
+
   const home = user
-    ? `/${user.role}`
+    ? (user.role === 'admin' ? '/admin' : user.role === 'manager' ? '/employee/team' : '/employee')
     : '/login';
 
   return (
+    <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
     <Routes>
 
       {/* Login */}
@@ -156,6 +192,7 @@ export default function App() {
         <Route path="reports/employees" element={<EmployeeReports />} />
         <Route path="reports/employees/:employeeId" element={<EmployeeReports />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="approvals" element={<Approvals />} />
         <Route path="advances" element={<AdvancesPage admin />} />
       </Route>
 
@@ -167,8 +204,8 @@ export default function App() {
       <Route
         path="/employee"
         element={
-          <ProtectedRoute role="employee">
-            <Layout links={empLinks} />
+          <ProtectedRoute role={['employee', 'manager']}>
+            <Layout links={user?.role === 'manager' ? managerLinks : empLinks} />
           </ProtectedRoute>
         }
       >
@@ -195,6 +232,15 @@ export default function App() {
         <Route path="advances" element={<AdvancesPage />} />
         <Route path="reports" element={<EmployeeReports self />} />
         <Route path="settings" element={<Settings />} />
+        {user?.role === 'manager' && <>
+          <Route path="team" element={<TeamDashboard />} />
+          <Route path="team-attendance" element={<TeamAttendance />} />
+          <Route path="team-leaves" element={<TeamLeaves team />} />
+          <Route path="team-requests" element={<TeamRequests />} />
+          <Route path="team-report" element={<TeamReport />} />
+          <Route path="team-payroll" element={<TeamPayroll />} />
+          <Route path="team-attendance-requests" element={<TeamAttendanceRequests />} />
+        </>}
       </Route>
 
 
@@ -213,5 +259,6 @@ export default function App() {
       />
 
     </Routes>
+    </Suspense>
   );
 }

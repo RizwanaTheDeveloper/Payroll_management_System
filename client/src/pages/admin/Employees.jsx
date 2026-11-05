@@ -61,7 +61,11 @@ const emptyForm = {
   name: '',
   email: '',
   password: '',
+  require_password_change: true,
+  pending_password_change: false,
   designation: '',
+  role: 'employee',
+  manager_id: '',
   gender: '',
   dob: '',
   pan: '',
@@ -83,6 +87,8 @@ const emptyForm = {
   professional_tax: '',
 
   // Bank
+  bank_name: '',
+  bank_branch: '',
   account_number: '',
   ifsc_code: '',
 };
@@ -109,6 +115,8 @@ const buildSalaryFromCtc = (ctcValue) => {
       special_allowance: '',
       lta: '',
       other_allowances: '',
+      epf: '',
+      professional_tax: '',
     };
   }
 
@@ -132,6 +140,11 @@ const buildSalaryFromCtc = (ctcValue) => {
     special_allowance: String(round2(specialAllowance)),
     lta: String(round2(lta)),
     other_allowances: String(round2(otherAllowances)),
+    // Andhra Pradesh statutory deductions: EPF 12% of basic (wage cap 15,000); PT slabs on monthly gross.
+    epf: String(Math.round(Math.min(basic, 15000) * 0.12)),
+    professional_tax: String(
+      monthlyCtc > 20000 ? 200 : monthlyCtc > 15000 ? 150 : 0
+    ),
   };
 };
 
@@ -186,6 +199,7 @@ export default function Employees() {
   const [form, setForm] = useState(emptyForm);
 
   const [editingId, setEditingId] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   useEffect(() => {
     setSalaryHistory([]); setSalaryHistoryError('');
     if (!editingId) return;
@@ -292,16 +306,23 @@ export default function Employees() {
 
   const openEditForm = (employee) => {
     setEditingId(employee.id);
+    const joiningDate = employee.joining_date
+      ? String(employee.joining_date).slice(0, 10)
+      : todayStr();
 
     setForm({
-      salary_effective_from: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
+      salary_effective_from: joiningDate,
       salary_change_reason: '',
       emp_code: employee.emp_code || '',
       name: employee.name || '',
       email: employee.email || '',
       password: '',
+      require_password_change: true,
+      pending_password_change: Boolean(employee.must_change_password),
 
       designation: employee.designation || '',
+      role: employee.role === 'manager' ? 'manager' : 'employee',
+      manager_id: employee.manager_id ? String(employee.manager_id) : '',
       gender: employee.gender || '',
 
       dob: employee.dob
@@ -311,9 +332,7 @@ export default function Employees() {
       pan: employee.pan || '',
       pf_uan: employee.pf_uan || '',
 
-      joining_date: employee.joining_date
-        ? String(employee.joining_date).slice(0, 10)
-        : todayStr(),
+      joining_date: joiningDate,
 
       resignation_date: employee.resignation_date
         ? String(employee.resignation_date).slice(0, 10)
@@ -337,6 +356,8 @@ export default function Employees() {
         employee.professional_tax ?? '',
 
       // Bank
+      bank_name: employee.bank_name || '',
+      bank_branch: employee.bank_branch || '',
       account_number:
         employee.account_number || '',
 
@@ -374,7 +395,10 @@ export default function Employees() {
 
     if (!editingId && !form.password.trim()) {
       nextErrors.password =
-        'Password is required.';
+        'Temporary password is required.';
+    } else if (form.password.trim() && form.password.length < 8) {
+      nextErrors.password =
+        'Password must be at least 8 characters.';
     }
 
     if (!form.designation.trim()) {
@@ -410,6 +434,9 @@ export default function Employees() {
     if (!form.ifsc_code.trim()) {
       nextErrors.ifsc_code =
         'IFSC code is required.';
+    } else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifsc_code.trim().toUpperCase())) {
+      nextErrors.ifsc_code =
+        'Enter a valid 11-character IFSC code.';
     }
 
     if (!form.joining_date) {
@@ -468,6 +495,18 @@ export default function Employees() {
     return Object.keys(nextErrors).length === 0;
   };
 
+  // Random temporary password for the administrator to hand over; shown so it can be copied.
+  const generatePassword = () => {
+    const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    setForm((current) => ({
+      ...current,
+      password: Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join(''),
+      require_password_change: true,
+    }));
+    setShowPassword(true);
+  };
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -491,6 +530,8 @@ export default function Employees() {
             special_allowance: '',
             lta: '',
             other_allowances: '',
+            epf: '',
+            professional_tax: '',
           };
         }
 
@@ -510,9 +551,16 @@ export default function Employees() {
       return;
     }
 
+    // PAN and IFSC are always uppercase letters and digits.
+    const nextValue =
+      name === 'pan' || name === 'ifsc_code'
+        ? value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+        : value;
+
     setForm((previous) => ({
       ...previous,
-      [name]: value,
+      [name]: nextValue,
+      ...(name === 'joining_date' ? { salary_effective_from: nextValue } : {}),
     }));
 
     if (errors[name]) {
@@ -534,6 +582,9 @@ export default function Employees() {
       designation:
         form.designation.trim(),
 
+      role: form.role,
+      manager_id: form.manager_id || null,
+
       gender: form.gender,
       dob: form.dob,
 
@@ -553,6 +604,9 @@ export default function Employees() {
 
       tax_regime:
         form.tax_regime,
+
+      bank_name: String(form.bank_name ?? '').trim(),
+      bank_branch: String(form.bank_branch ?? '').trim(),
 
       account_number:
         form.account_number.trim(),
@@ -590,6 +644,8 @@ export default function Employees() {
     if (form.password.trim()) {
       payload.password =
         form.password;
+      payload.require_password_change =
+        form.require_password_change;
     }
 
     return payload;
@@ -737,8 +793,8 @@ export default function Employees() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           flex-shrink: 0;
         }
 
@@ -781,13 +837,13 @@ export default function Employees() {
         }
 
         .employee-primary-btn {
-          background: #2563eb;
+          background: #4f46e5;
           color: #fff;
-          box-shadow: 0 5px 14px rgba(37, 99, 235, 0.18);
+          box-shadow: 0 5px 14px rgba(79, 70, 229, 0.18);
         }
 
         .employee-primary-btn:hover {
-          background: #1d4ed8;
+          background: #4338ca;
           transform: translateY(-1px);
         }
 
@@ -870,8 +926,8 @@ export default function Employees() {
           width: 36px;
           height: 36px;
           border-radius: 9px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -932,8 +988,8 @@ export default function Employees() {
 
         .employee-input:focus,
         .employee-select:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.10);
         }
 
         .employee-input.has-error,
@@ -988,7 +1044,7 @@ export default function Employees() {
         }
 
         .employees-table-title svg {
-          color: #2563eb;
+          color: #4f46e5;
         }
 
         .employee-search {
@@ -1017,8 +1073,8 @@ export default function Employees() {
         }
 
         .employee-search input:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.10);
         }
 
         .employee-table-wrapper {
@@ -1115,8 +1171,8 @@ export default function Employees() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #eef2ff;
+          color: #4f46e5;
         }
 
         .employee-name-content {
@@ -1126,9 +1182,15 @@ export default function Employees() {
         .employee-name {
           color: #0f172a;
           font-weight: 700;
+          text-decoration: none;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+
+        .employee-name:hover {
+          color: #305ceb;
+          text-decoration: underline;
         }
 
         .employee-code {
@@ -1185,14 +1247,14 @@ export default function Employees() {
         }
 
         .employee-edit-btn {
-          color: #2563eb;
-          background: #eff6ff;
-          border-color: #bfdbfe;
+          color: #4f46e5;
+          background: #eef2ff;
+          border-color: #c7d2fe;
         }
 
         .employee-edit-btn:hover {
-          background: #dbeafe;
-          border-color: #93c5fd;
+          background: #e0e7ff;
+          border-color: #a5b4fc;
         }
 
         .employee-delete-btn {
@@ -1245,7 +1307,7 @@ export default function Employees() {
           height: 25px;
           margin: 0 auto 10px;
           border: 3px solid #e2e8f0;
-          border-top-color: #2563eb;
+          border-top-color: #4f46e5;
           border-radius: 50%;
           animation: employeeSpin 0.8s linear infinite;
         }
@@ -1343,6 +1405,63 @@ export default function Employees() {
             padding-top: 0;
           }
 
+          /* Phones: each employee becomes a card instead of a sideways-scrolling table row */
+          .employee-table {
+            min-width: 0 !important;
+            table-layout: auto !important;
+          }
+
+          .employee-table thead {
+            display: none;
+          }
+
+          .employee-table tbody tr {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 4px 12px;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+          }
+
+          .employee-table td {
+            display: block;
+            width: auto !important;
+            padding: 0 !important;
+            border: 0 !important;
+          }
+
+          .employee-table td:nth-child(1):not([colspan]) {
+            display: none;
+          }
+
+          .employee-table td[colspan],
+          .employee-table td:nth-child(2),
+          .employee-table td:nth-child(3),
+          .employee-table td:nth-child(4) {
+            grid-column: 1 / -1;
+          }
+
+          .employee-table td:nth-child(3),
+          .employee-table td:nth-child(4) {
+            color: #64748b;
+            font-size: 13px;
+          }
+
+          .employee-table td:nth-child(5) {
+            margin-top: 6px;
+          }
+
+          .employee-table td:nth-child(6) {
+            margin-top: 6px;
+            justify-self: end;
+          }
+
+          .employee-name {
+            white-space: normal;
+            overflow: visible;
+          }
+
           .employees-header {
             align-items: stretch;
           }
@@ -1430,27 +1549,16 @@ export default function Employees() {
           </p>
         </div>
 
-        <button
-          type="button"
-          className="employee-primary-btn"
-          onClick={
-            showForm
-              ? closeForm
-              : openCreateForm
-          }
-        >
-          {showForm ? (
-            <>
-              <FiX size={17} />
-              Cancel
-            </>
-          ) : (
-            <>
-              <FiPlus size={17} />
-              Add Employee
-            </>
-          )}
-        </button>
+        {!showForm && (
+          <button
+            type="button"
+            className="employee-primary-btn"
+            onClick={openCreateForm}
+          >
+            <FiPlus size={17} />
+            Add Employee
+          </button>
+        )}
       </div>
 
       {/* CREATE / EDIT FORM */}
@@ -1561,27 +1669,45 @@ export default function Employees() {
                 <div className="employee-field">
                   <label className="employee-label">
                     {editingId
-                      ? 'Password'
-                      : 'Password *'}
+                      ? 'Reset password'
+                      : 'Temporary password *'}
                   </label>
 
-                  <input
-                    type="password"
-                    name="password"
-                    value={form.password}
-                    onChange={handleChange}
-                    className={fieldClass('password')}
-                    placeholder={
-                      editingId
-                        ? 'Leave blank to keep current password'
-                        : 'Create password'
-                    }
-                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={form.password}
+                      onChange={handleChange}
+                      className={fieldClass('password')}
+                      autoComplete="new-password"
+                      style={{ flex: 1 }}
+                      placeholder={
+                        editingId
+                          ? 'Leave blank to keep current password'
+                          : 'At least 8 characters'
+                      }
+                    />
+                    <button type="button" className="employee-secondary-btn" onClick={generatePassword}>Generate</button>
+                    <button type="button" className="employee-secondary-btn" onClick={() => setShowPassword((value) => !value)}>{showPassword ? 'Hide' : 'Show'}</button>
+                  </div>
 
                   {editingId && (
                     <div className="employee-help">
                       Leave blank to keep the existing password.
+                      {form.pending_password_change && ' This employee has not yet replaced their temporary password.'}
                     </div>
+                  )}
+
+                  {form.password.trim() && (
+                    <label className="employee-help" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={form.require_password_change}
+                        onChange={(event) => setForm((current) => ({ ...current, require_password_change: event.target.checked }))}
+                      />
+                      Require the employee to set their own password at next sign-in
+                    </label>
                   )}
 
                   {errors.password && (
@@ -1612,6 +1738,24 @@ export default function Employees() {
                       {errors.designation}
                     </div>
                   )}
+                </div>
+
+                <div className="employee-field">
+                  <label className="employee-label">Role</label>
+                  <select name="role" value={form.role} onChange={handleChange} className="employee-select">
+                    <option value="employee">Employee</option>
+                    <option value="manager">Manager (approves team leave)</option>
+                  </select>
+                </div>
+
+                <div className="employee-field">
+                  <label className="employee-label">Reports to</label>
+                  <select name="manager_id" value={form.manager_id} onChange={handleChange} className="employee-select">
+                    <option value="">No manager (admin approves leave)</option>
+                    {employees
+                      .filter((person) => person.role === 'manager' && person.is_active !== false && person.id !== editingId)
+                      .map((person) => <option key={person.id} value={person.id}>{person.name} ({person.emp_code})</option>)}
+                  </select>
                 </div>
 
                 <div className="employee-field">
@@ -1693,6 +1837,9 @@ export default function Employees() {
                     className={fieldClass('pan')}
                     placeholder="ABCDE1234F"
                     maxLength={10}
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    style={{ textTransform: 'uppercase' }}
                   />
 
                   {errors.pan && (
@@ -1802,7 +1949,7 @@ export default function Employees() {
                     </span>
                   </label>
 
-                  <input
+                  <input step="any"
                     type="number"
                     min="0"
                     name="ctc"
@@ -1847,9 +1994,9 @@ export default function Employees() {
 
               {/* MONTHLY SALARY STRUCTURE */}
               {editingId && <div className="payroll-salary-history">
-                <div className="employee-form-grid"><div className="employee-field"><label className="employee-label">Salary effective from<input type="date" min="2000-01-01" max="2100-12-31" name="salary_effective_from" value={form.salary_effective_from} onChange={handleChange} className="employee-input" /></label></div><div className="employee-field"><label className="employee-label">Salary change reason<input type="text" maxLength={1000} name="salary_change_reason" value={form.salary_change_reason} onChange={handleChange} className="employee-input" placeholder="Required when salary components change" /></label></div></div>
-                <p className="employee-help">Salary changes create a new dated version. Earlier payroll uses the version effective on each employment day.</p>
-                <details><summary>Salary history ({salaryHistory.length} versions)</summary>{salaryHistoryError ? <p role="alert">{salaryHistoryError}</p> : <div className="employee-table-wrapper"><table><thead><tr><th>Effective from</th><th>Monthly earnings</th><th>Changed by / reason</th></tr></thead><tbody>{salaryHistory.map((version) => <tr key={version.id}><td>{version.effective_from}</td><td>{money(salaryKeys.reduce((sum, key) => sum + Number(version[key] || 0), 0))}</td><td>{version.changed_by}<div>{version.reason}</div></td></tr>)}</tbody></table></div>}</details>
+                <div className="employee-form-grid"><div className="employee-field"><label className="employee-label">Salary effective from<input type="date" min="2000-01-01" max="2100-12-31" name="salary_effective_from" value={form.salary_effective_from} onChange={handleChange} className="employee-input" /></label></div><div className="employee-field"><label className="employee-label">Salary change reason<input type="text" maxLength={1000} name="salary_change_reason" value={form.salary_change_reason} onChange={handleChange} className="employee-input" placeholder="Required when salary components change" required={false} /></label></div></div>
+                <p className="employee-help">Defaults to the employee's joining date. For a later salary revision, select the date the new salary actually takes effect.</p>
+                <details><summary>Salary history ({salaryHistory.length} version{salaryHistory.length === 1 ? '' : 's'})</summary>{salaryHistoryError ? <p role="alert">{salaryHistoryError}</p> : <div className="employee-table-wrapper"><table><thead><tr><th>Effective from</th><th>Monthly earnings</th><th>Changed by / reason</th></tr></thead><tbody>{salaryHistory.map((version) => <tr key={version.id}><td>{version.effective_from}</td><td>{money(salaryKeys.reduce((sum, key) => sum + Number(version[key] || 0), 0))}</td><td>{version.changed_by}<div>{version.reason}</div></td></tr>)}</tbody></table></div>}</details>
               </div>}
               <SectionHeader
                 icon={<FaRupeeSign size={18} />}
@@ -1871,6 +2018,7 @@ export default function Employees() {
                     <input
                       type="number"
                       min="0"
+                      step="any"
                       name={key}
                       value={form[key]}
                       onChange={handleChange}
@@ -1911,6 +2059,7 @@ export default function Employees() {
                     <input
                       type="number"
                       min="0"
+                      step="any"
                       name={key}
                       value={form[key]}
                       onChange={handleChange}
@@ -1934,10 +2083,40 @@ export default function Employees() {
               <SectionHeader
                 icon={<FiCreditCard size={18} />}
                 title="Bank Details"
-                description="Salary payment account information"
+                description="Enter the bank branch details matching the employee's salary account"
               />
 
               <div className="employee-form-grid">
+
+                <div className="employee-field">
+                  <label className="employee-label">
+                    Bank Name
+                  </label>
+
+                  <input
+                    name="bank_name"
+                    value={form.bank_name ?? ''}
+                    onChange={handleChange}
+                    className={fieldClass('bank_name')}
+                    placeholder="e.g. State Bank of India"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="employee-field">
+                  <label className="employee-label">
+                    Branch Name
+                  </label>
+
+                  <input
+                    name="bank_branch"
+                    value={form.bank_branch ?? ''}
+                    onChange={handleChange}
+                    className={fieldClass('bank_branch')}
+                    placeholder="Bank branch"
+                    autoComplete="off"
+                  />
+                </div>
 
                 <div className="employee-field">
                   <label className="employee-label">
@@ -1980,7 +2159,15 @@ export default function Employees() {
                       'ifsc_code'
                     )}
                     placeholder="SBIN0001234"
+                    maxLength={11}
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    style={{ textTransform: 'uppercase' }}
                   />
+
+                  <div className="employee-help">
+                    IFSC identifies a bank branch, not just the bank. Verify the code against the account's branch.
+                  </div>
 
                   {errors.ifsc_code && (
                     <div className="employee-error">
@@ -2026,7 +2213,7 @@ export default function Employees() {
       )}
 
       {/* EMPLOYEE TABLE */}
-      <div className="employees-table-card">
+      {!showForm && <div className="employees-table-card">
 
         <div className="employees-table-toolbar">
 
@@ -2066,7 +2253,7 @@ export default function Employees() {
                 <th>Employee</th>
                 <th>Email</th>
                 <th>Designation</th>
-                <th>CTC</th>
+                <th>Annual CTC</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -2213,7 +2400,8 @@ export default function Employees() {
           </table>
 
         </div>
-      </div>
+      </div>}
+
 
     </div>
   );

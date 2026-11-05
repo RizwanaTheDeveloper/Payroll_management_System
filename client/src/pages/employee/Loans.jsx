@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { FiCalendar, FiInfo, FiRefreshCw } from 'react-icons/fi';
+import { FiClock, FiInfo, FiRefreshCw, FiRepeat } from 'react-icons/fi';
+import { FaRupeeSign } from 'react-icons/fa';
 import api from '../../api';
 import { loanAmounts } from '../../utils/loanAmounts';
 import LoanRepaymentTotal from '../../components/LoanRepaymentTotal';
@@ -61,9 +62,9 @@ export default function Loans() {
     {error && <p className="loan-error" role="alert">{error}</p>}
     {success && <p className="loan-success" role="status">{success}</p>}
     <div className="loan-summary">
-      <div className="loan-stat"><div><strong>Outstanding balance</strong><FiCalendar /></div><b>{loading || error ? '—' : money(active.reduce((total, loan) => total + Number(loan.outstanding), 0))}</b><span>Across your approved loans</span></div>
-      <div className="loan-stat"><div><strong>Recovered in payroll</strong><FiCalendar /></div><b>{loading || error ? '—' : money(list.reduce((total, loan) => total + Number(loan.recovered), 0))}</b><span>Total recorded deductions</span></div>
-      <div className="loan-stat peach"><div><strong>Pending requests</strong><FiCalendar /></div><b>{loading || error ? '—' : list.filter((loan) => loan.status === 'pending').length}</b><span>Awaiting administrator review</span></div>
+      <div className="loan-stat"><div><strong>Outstanding balance</strong><FaRupeeSign /></div><b>{loading || error ? '—' : money(active.reduce((total, loan) => total + Number(loan.outstanding), 0))}</b><span>Across your approved loans</span></div>
+      <div className="loan-stat"><div><strong>Recovered in payroll</strong><FiRepeat /></div><b>{loading || error ? '—' : money(list.reduce((total, loan) => total + Number(loan.recovered), 0))}</b><span>Total recorded deductions</span></div>
+      <div className="loan-stat peach"><div><strong>Pending requests</strong><FiClock /></div><b>{loading || error ? '—' : list.filter((loan) => loan.status === 'pending').length}</b><span>Awaiting administrator review</span></div>
     </div>
     <div className="loan-workspace">
       <section className="loan-panel" aria-labelledby="my-loan-requests"><div className="loan-panel-head"><h2 id="my-loan-requests">My requests</h2></div>
