@@ -161,14 +161,24 @@ async function main() {
     await request('/payslips/generate', 'POST', { employee_id: employee, month: 1, year: 2026 }, token, 201);
     let payslip = (await request('/payslips?month=1&year=2026'))[0];
     assert.equal(Number(payslip.deductions), 1000);
-    assert.equal(Number(payslip.net_pay), 30000);
+    assert.equal(Number(payslip.unpaid_leave_deduction), 1000, 'The third monthly leave day is deducted as loss of pay');
+    assert.equal(Number(payslip.net_pay), 28000);
+    let preview = await request('/payslips/preview', 'POST',
+      { employee_id: employee, month: 1, year: 2026 });
+    assert.equal(preview.unpaid_leave_deduction, 1000, 'Payroll preview includes loss of pay for the third leave day');
+    assert.equal(preview.calculation_snapshot.unpaid_dates.length, 1, 'Payroll preview shows the unpaid leave day');
     await mark('05', 'leave');
     assert.equal((await calcPayDays(employee, 1, 2026, pool)).unpaidLeaveDays, 2, 'Backdated leave recalculates chronological allowance');
+    preview = await request('/payslips/preview', 'POST',
+      { employee_id: employee, month: 1, year: 2026 });
+    assert.equal(preview.unpaid_leave_deduction, 2000, 'Payroll preview recalculates loss of pay after backdated leave');
+    assert.equal(preview.calculation_snapshot.unpaid_dates.length, 2, 'Payroll preview lists each unpaid leave day');
     await request('/payslips/generate', 'POST', { employee_id: employee, month: 1, year: 2026,
       mode: 'update', deductions: 50 }, token, 201);
     payslip = (await request('/payslips?month=1&year=2026'))[0];
+    assert.equal(Number(payslip.unpaid_leave_deduction), 2000, 'The fourth leave day is also unpaid');
     assert.equal(Number(payslip.deductions), 2050);
-    assert.equal(Number(payslip.net_pay), 28950);
+    assert.equal(Number(payslip.net_pay), 26950);
     await mark('05', 'present');
     await mark('10', 'present');
     assert.equal((await calcPayDays(employee, 1, 2026, pool)).unpaidLeaveDays, 0, 'Corrected attendance restores paid leave');

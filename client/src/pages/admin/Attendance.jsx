@@ -421,12 +421,18 @@ function MarkDay() {
                   <td data-label="Attendance">
                     <div className="attendance-choice-grid" role="group" aria-label={`Attendance for ${row.name}`}>
                       {ATTENDANCE_CHOICES.map(({ label, status, day_type, Icon }) => {
-                        const selected = row.status === status && row.day_type === day_type;
+                        const recordedStatus = row.status === row.loaded_status
+                          ? (row.recorded_status ?? row.status)
+                          : row.status;
+                        const selected = (status === 'leave'
+                          ? ['leave', 'paid_leave'].includes(recordedStatus)
+                          : recordedStatus === status) && row.day_type === day_type;
+                        const unpaidByPolicy = selected && status === 'leave' && recordedStatus === 'leave' && row.status === 'absent';
                         return (
                           <button
                             key={label}
                             type="button"
-                            className={`attendance-choice ${status} ${selected ? 'selected' : ''}`}
+                            className={`attendance-choice ${status} ${selected ? 'selected' : ''} ${unpaidByPolicy ? 'unpaid' : ''}`}
                             aria-pressed={selected}
                             disabled={saving}
                             onClick={() => update(row.employee_id, {
@@ -435,13 +441,19 @@ function MarkDay() {
                             })}
                           >
                             <Icon />
-                            <span>{label}</span>
+                            <span>{unpaidByPolicy ? 'Unpaid Leave' : label}</span>
                             {selected && <FiCheck className="choice-check" />}
                           </button>
                         );
                       })}
                     </div>
-                    {row.status === 'absent' && <small>Previously marked Unpaid Leave. Select a card to change.</small>}
+                    {row.status === 'absent' && (
+                      <small>
+                        {['leave', 'paid_leave'].includes(row.recorded_status)
+                          ? 'This leave exceeds the two paid leave days for the month and will be deducted in payroll.'
+                          : 'Previously marked as unpaid. Unpaid days are deducted in payroll.'}
+                      </small>
+                    )}
                   </td>
 
                   <td data-label="Note">
@@ -542,6 +554,7 @@ function MarkDay() {
         .attendance-choice:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 2px; }
         .attendance-choice.selected { border-color: #059669; background: #ecfdf5; color: #047857; }
         .attendance-choice.leave.selected { border-color: #d97706; background: #fffbeb; color: #b45309; }
+        .attendance-choice.leave.unpaid.selected { border-color: #dc2626; background: #fee2e2; color: #991b1b; box-shadow: inset 0 0 0 1px #dc2626; }
         .attendance-choice:disabled { opacity: .6; cursor: wait; }
         .choice-check { margin-left: auto; }
         .attendance-section {
