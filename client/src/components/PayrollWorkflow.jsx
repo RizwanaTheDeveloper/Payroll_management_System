@@ -5,6 +5,9 @@ import { loanDeductionItems } from '../utils/payrollDeductions';
 
 const money = (value) => Number(value || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
 const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+const lossOfPayLabel = (days) => days == null
+  ? 'Loss Of Pay'
+  : `Loss Of Pay (${days} ${Number(days) === 1 ? 'day' : 'days'})`;
 
 export default function PayrollWorkflow({ payslip, onChanged }) {
   const dialog = useRef(null);
@@ -46,7 +49,7 @@ export default function PayrollWorkflow({ payslip, onChanged }) {
         <dl className="payroll-deduction-breakdown">{[
           ['Gross earnings', gross], ['EPF', payslip.epf], ['Professional tax', payslip.professional_tax],
           ...loanDeductionItems(payslip).map((item) => [item.label, item.amount]),
-          ...(payslip.unpaid_leave_deduction == null ? [['Other / Loss Of Pay deductions', payslip.deductions]] : [['Loss Of Pay', payslip.unpaid_leave_deduction], ['Additional deductions', payslip.additional_deductions]]),
+          ...(payslip.unpaid_leave_deduction == null ? [['Other / Loss Of Pay deductions', payslip.deductions]] : [[lossOfPayLabel(payslip.unpaid_leave_days ?? payslip.calculation_snapshot?.unpaid_dates?.length), payslip.unpaid_leave_deduction], ['Additional deductions', payslip.additional_deductions]]),
           ['Total deductions', gross - Number(payslip.net_pay)], ['Take-home pay', payslip.net_pay],
         ].map(([label, amount]) => <div key={label}><dt>{label}</dt><dd>{money(amount)}</dd></div>)}</dl>
         {payslip.employed_days != null && <p className="payroll-policy-note">{payslip.employed_days} employment days · {payslip.net_paid_days} paid days · {payslip.month_days} calendar days. Earnings are prorated by employment dates and effective salary versions.</p>}

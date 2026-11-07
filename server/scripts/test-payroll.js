@@ -56,6 +56,8 @@ async function main() {
     const preview = await request('/payslips/preview', 'POST', payload);
     assert.equal(preview.basic, 15000); assert.equal(preview.hra, 3000);
     assert.equal(preview.gross, 18000); assert.equal(preview.unpaid_leave_deduction, 1200);
+    assert.equal(preview.unpaid_leave_days, 1);
+    assert.equal(preview.epf, 1800); assert.equal(preview.professional_tax, 200);
     assert.equal(preview.net_pay, 14800); assert.equal(preview.employed_days, 15); assert.equal(preview.net_paid_days, 14);
     assert.equal((await request('/payslips')).length, 0, 'Preview does not create payslips');
     await request('/payslips/generate', 'POST', payload, 201);
@@ -67,6 +69,7 @@ async function main() {
     )).rows[0];
     assert.equal(initialSalary.effective_from, '2026-09-16', 'Initial salary starts on the joining date');
     assert.equal(Number(slip.net_pay), preview.net_pay); assert.equal(slip.status, 'draft');
+    assert.equal(Number(slip.unpaid_leave_days), 1);
     assert.equal(Number(slip.additional_deductions), 0);
     const oldSnapshot = slip.calculation_snapshot;
 

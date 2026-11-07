@@ -55,6 +55,11 @@ const labelFromKey = (key) => {
 const getPeriodLabel = (p) =>
   `${MONTHS[Number(p.month) - 1] || p.month} ${p.year}`;
 
+const lossOfPayLabel = (p) => {
+  const days = p.unpaid_leave_days ?? p.calculation_snapshot?.unpaid_dates?.length;
+  return days == null ? 'Loss Of Pay' : `Loss Of Pay (${days} ${Number(days) === 1 ? 'day' : 'days'})`;
+};
+
 // Everything earned beyond basic pay. The `allowances` column is only the one-off additional
 // amount, so the salary components (HRA, special, LTA, other) must be added or net pay does not reconcile.
 const getAllowances = (p) => (
@@ -1403,7 +1408,7 @@ export default function Payslips() {
 
                         <td className={totalDeductions > 0 ? 'negative' : 'muted-zero'}>
                           {totalDeductions > 0 ? '-' : ''}{money(totalDeductions)}
-                          <details><summary>Deduction breakdown</summary><small style={{ display: 'block' }}>EPF: {money(p.epf)}</small><small style={{ display: 'block' }}>Professional tax: {money(p.professional_tax)}</small>{Number(p.late_login_deduction) > 0 && <small style={{ display: 'block' }}>Late login (half day): {money(p.late_login_deduction)} — {p.late_login_reason}</small>}{p.unpaid_leave_deduction == null ? <small>Other / Loss Of Pay: {money(p.deductions)}</small> : <><small style={{ display: 'block' }}>Loss Of Pay: {money(p.unpaid_leave_deduction)}</small><small style={{ display: 'block' }}>Additional deductions: {money(p.additional_deductions)}</small></>}</details>
+                          <details><summary>Deduction breakdown</summary><small style={{ display: 'block' }}>EPF: {money(p.epf)}</small><small style={{ display: 'block' }}>Professional tax: {money(p.professional_tax)}</small>{Number(p.late_login_deduction) > 0 && <small style={{ display: 'block' }}>Late login (half day): {money(p.late_login_deduction)} — {p.late_login_reason}</small>}{p.unpaid_leave_deduction == null ? <small>Other / Loss Of Pay: {money(p.deductions)}</small> : <><small style={{ display: 'block' }}>{lossOfPayLabel(p)}: {money(p.unpaid_leave_deduction)}</small><small style={{ display: 'block' }}>Additional deductions: {money(p.additional_deductions)}</small></>}</details>
                           {loanDeductionItems(p).map((entry) => (
                             <small key={entry.id} style={{ display: 'block' }}>
                               {entry.label}: -{money(entry.amount)}
@@ -1519,7 +1524,7 @@ export default function Payslips() {
                       <div className="mobile-breakdown-item"><span>EPF</span><strong>{money(p.epf)}</strong></div>
                       <div className="mobile-breakdown-item"><span>Professional tax</span><strong>{money(p.professional_tax)}</strong></div>
                       {Number(p.late_login_deduction) > 0 && <><div className="mobile-breakdown-item"><span>Late login (half day)</span><strong>{money(p.late_login_deduction)}</strong></div><small>{p.late_login_reason}</small></>}
-                      {p.unpaid_leave_deduction != null && <><div className="mobile-breakdown-item"><span>Loss Of Pay</span><strong>{money(p.unpaid_leave_deduction)}</strong></div><div className="mobile-breakdown-item"><span>Additional deductions</span><strong>{money(p.additional_deductions)}</strong></div></>}
+                      {p.unpaid_leave_deduction != null && <><div className="mobile-breakdown-item"><span>{lossOfPayLabel(p)}</span><strong>{money(p.unpaid_leave_deduction)}</strong></div><div className="mobile-breakdown-item"><span>Additional deductions</span><strong>{money(p.additional_deductions)}</strong></div></>}
                     </div>
 
                     <button

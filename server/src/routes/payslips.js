@@ -48,6 +48,7 @@ router.get(
 
         -- Final
         net_pay, status, payment_status, paid_on, payment_reference, unpaid_leave_deduction, additional_deductions, late_login_deduction, late_login_count, late_login_reason, month_days, employed_days, net_paid_days,
+        jsonb_array_length(p.calculation_snapshot -> 'unpaid_dates') AS unpaid_leave_days,
         COALESCE((SELECT json_agg(json_build_object('advance_id', r.advance_id, 'amount', r.amount, 'record_type', a.record_type) ORDER BY r.advance_id)
           FROM advance_recoveries r JOIN advances a ON a.id = r.advance_id WHERE r.payslip_id = p.id), '[]'::json) AS advance_recoveries
 
@@ -118,6 +119,7 @@ router.get(
         `
         SELECT
           p.*,
+          jsonb_array_length(p.calculation_snapshot -> 'unpaid_dates') AS unpaid_leave_days,
           e.name,
           e.emp_code,
           COALESCE((SELECT json_agg(json_build_object('advance_id', r.advance_id, 'amount', r.amount, 'record_type', a.record_type))

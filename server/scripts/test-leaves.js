@@ -20,8 +20,8 @@ async function main() {
     pool.options.options = `-c search_path=${schema}`;
     await pool.query(fs.readFileSync(path.join(__dirname, '../src/schema.sql'), 'utf8'));
     const employee = (await pool.query(`INSERT INTO employees
-      (emp_code,name,email,password_hash,role,basic,joining_date)
-      VALUES ('TEST-E','Employee','employee@test.invalid','unused','employee',31000,'2020-01-01') RETURNING id`)).rows[0].id;
+      (emp_code,name,email,password_hash,role,basic,epf,professional_tax,joining_date)
+      VALUES ('TEST-E','Employee','employee@test.invalid','unused','employee',31000,1800,200,'2020-01-01') RETURNING id`)).rows[0].id;
     const administrator = (await pool.query(`INSERT INTO employees
       (emp_code,name,email,password_hash,role)
       VALUES ('TEST-A','Admin','admin@test.invalid','unused','admin') RETURNING id`)).rows[0].id;
@@ -162,16 +162,19 @@ async function main() {
     let payslip = (await request('/payslips?month=1&year=2026'))[0];
     assert.equal(Number(payslip.deductions), 1000);
     assert.equal(Number(payslip.unpaid_leave_deduction), 1000, 'The third monthly leave day is deducted as loss of pay');
+    assert.equal(Number(payslip.unpaid_leave_days), 1, 'Only the leave day beyond the two-day allowance is unpaid');
     assert.equal(Number(payslip.net_pay), 28000);
     let preview = await request('/payslips/preview', 'POST',
       { employee_id: employee, month: 1, year: 2026 });
     assert.equal(preview.unpaid_leave_deduction, 1000, 'Payroll preview includes loss of pay for the third leave day');
+    assert.equal(preview.unpaid_leave_days, 1);
     assert.equal(preview.calculation_snapshot.unpaid_dates.length, 1, 'Payroll preview shows the unpaid leave day');
     await mark('05', 'leave');
     assert.equal((await calcPayDays(employee, 1, 2026, pool)).unpaidLeaveDays, 2, 'Backdated leave recalculates chronological allowance');
     preview = await request('/payslips/preview', 'POST',
       { employee_id: employee, month: 1, year: 2026 });
     assert.equal(preview.unpaid_leave_deduction, 2000, 'Payroll preview recalculates loss of pay after backdated leave');
+    assert.equal(preview.unpaid_leave_days, 2);
     assert.equal(preview.calculation_snapshot.unpaid_dates.length, 2, 'Payroll preview lists each unpaid leave day');
     await request('/payslips/generate', 'POST', { employee_id: employee, month: 1, year: 2026,
       mode: 'update', deductions: 50 }, token, 201);

@@ -42,7 +42,7 @@ async function calculate(client, employee, input) {
     .map((row) => row.work_date).filter((workDate) => !unpaid.has(workDate));
   const penaltyDate = lateDates.length >= 3 ? lateDates[2] : null;
   let lateCents = 0;
-  let leaveCents = 0, basicLossCents = 0, missingSalary = false;
+  let leaveCents = 0, missingSalary = false;
   const versions = new Set();
   let current = structures[0];
   for (let day = 1; day <= days.monthDays; day++) {
@@ -54,8 +54,8 @@ async function calculate(client, employee, input) {
     versions.add(current.id);
     for (const key of EARNINGS) {
       earned[key] += cents(current[key]);
-      if (unpaid.has(workDate)) { leaveCents += cents(current[key]); if (key === 'basic') basicLossCents += cents(current[key]); }
-      if (workDate === penaltyDate) { lateCents += cents(current[key]) / 2; if (key === 'basic') basicLossCents += cents(current[key]) / 2; }
+      if (unpaid.has(workDate)) leaveCents += cents(current[key]);
+      if (workDate === penaltyDate) lateCents += cents(current[key]) / 2;
     }
   }
   const result = Object.fromEntries(EARNINGS.map((key) => [key, cash(earned[key] / days.monthDays)]));
@@ -74,15 +74,13 @@ async function calculate(client, employee, input) {
     : '';
   result.deductions = cash(cents(result.unpaid_leave_deduction) + cents(input.deductions) + cents(result.late_login_deduction));
   result.gross = cash([...EARNINGS, 'allowances'].reduce((sum, key) => sum + cents(result[key]), 0));
-  // Andhra Pradesh statutory deductions on wages actually payable (after Loss Of Pay / late-login cuts).
-  const payableBasic = Math.max(0, result.basic - cash(basicLossCents / days.monthDays));
-  const payableGross = Math.max(0, result.gross - result.unpaid_leave_deduction - result.late_login_deduction);
-  result.epf = input.epf ?? Math.round(Math.min(payableBasic, 15000) * 0.12);
-  result.professional_tax = input.professional_tax ?? (payableGross > 20000 ? 200 : payableGross > 15000 ? 150 : 0);
+  result.epf = input.epf ?? cash(cents(current.epf));
+  result.professional_tax = input.professional_tax ?? cash(cents(current.professional_tax));
   result.total_deductions = cash(['epf', 'professional_tax', 'advance', 'deductions'].reduce((sum, key) => sum + cents(result[key]), 0));
   result.net_pay = cash(cents(result.gross) - cents(result.total_deductions));
   result.month_days = days.monthDays;
   result.employed_days = days.employedDays;
+  result.unpaid_leave_days = days.unpaidLeaveDays;
   result.net_paid_days = Math.max(0, days.netPaidDays - (penaltyDate ? 0.5 : 0));
   result.calculation_snapshot = { basis: 'calendar_days', salary_versions: [...versions],
     structures: structures.filter((row) => versions.has(row.id)).map((row) => ({ id: row.id, effective_from: row.effective_from, ...Object.fromEntries(FIELDS.map((key) => [key, row[key]])) })),

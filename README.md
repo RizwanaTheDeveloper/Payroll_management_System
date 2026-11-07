@@ -32,7 +32,7 @@ Reports use existing database records. Attendance and leave counts cover the sel
 
 For an existing installation, run `npm.cmd run db:init` in `server`, then restart the API. The migration adds salary versions, payroll workflow/payment fields, calculation snapshots and an audit log. Existing payslip amounts are preserved; their initial workflow status is Draft and no salary payment is inferred.
 
-Monthly earnings use calendar days: each salary component is weighted by the employee's employment dates and the salary version effective on each day. Unpaid leave is deducted at that day's salary rate. The existing leave allowance is retained; additional allowances, EPF and professional tax remain fixed monthly amounts rather than being automatically prorated. Unmarked attendance does not automatically reduce salary.
+Monthly earnings use calendar days: each salary component is weighted by the employee's employment dates and the salary version effective on each day. Approved paid leave does not reduce pay within the two-day monthly allowance; excess leave is recorded as Loss Of Pay, with each unpaid day deducted at that day's salary rate (monthly salary divided by calendar days). Additional allowances, EPF and professional tax remain fixed monthly amounts from the effective salary structure rather than being automatically prorated or reduced for Loss Of Pay. Unmarked attendance does not automatically reduce salary.
 
 When changing salary components in **Employees**, provide an effective date and a reason. **Salary history** shows dated versions and who entered them. A second version on the same effective date is rejected to preserve history. Opening versions reflect the salary structure available when tracking was enabled; salary changes made before tracking cannot be reconstructed automatically. Verify historical salary versions before regenerating old payroll.
 
@@ -142,4 +142,3 @@ Employees and managers record their own day with **Check in** and **Check out** 
 - The late rule (check-in after 9:10 AM; three late days in a month cost a half day) and worked hours now use these real times. A present day with no check-out appears in the payroll checklist as a "punch to check".
 - A forgotten check-in or check-out is fixed through **Request an attendance correction**, which now takes an optional check-in and check-out time. Approval by the manager (or an administrator) records the times along with the day.
 - Run `npm.cmd run db:init` in `server` to add the two time columns on correction requests.
-

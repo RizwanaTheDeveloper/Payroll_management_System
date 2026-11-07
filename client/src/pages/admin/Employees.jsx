@@ -64,6 +64,7 @@ const emptyForm = {
   require_password_change: true,
   pending_password_change: false,
   designation: '',
+  department: '',
   role: 'employee',
   manager_id: '',
   gender: '',
@@ -321,6 +322,7 @@ export default function Employees() {
       pending_password_change: Boolean(employee.must_change_password),
 
       designation: employee.designation || '',
+      department: employee.department || '',
       role: employee.role === 'manager' ? 'manager' : 'employee',
       manager_id: employee.manager_id ? String(employee.manager_id) : '',
       gender: employee.gender || '',
@@ -581,6 +583,8 @@ export default function Employees() {
 
       designation:
         form.designation.trim(),
+
+      department: form.department.trim(),
 
       role: form.role,
       manager_id: form.manager_id || null,
@@ -1123,22 +1127,22 @@ export default function Employees() {
 
         .employee-table th:nth-child(1),
         .employee-table td:nth-child(1) {
-          width: 85px;
+          width: 80px;
         }
 
         .employee-table th:nth-child(2),
         .employee-table td:nth-child(2) {
-          width: 19%;
+          width: 16%;
         }
 
         .employee-table th:nth-child(3),
         .employee-table td:nth-child(3) {
-          width: 18%;
+          width: 16%;
         }
 
         .employee-table th:nth-child(4),
         .employee-table td:nth-child(4) {
-          width: 22%;
+          width: 15%;
         }
 
         .employee-table th:nth-child(5),
@@ -1148,7 +1152,26 @@ export default function Employees() {
 
         .employee-table th:nth-child(6),
         .employee-table td:nth-child(6) {
+          width: 10%;
+        }
+
+        .employee-table th:nth-child(7),
+        .employee-table td:nth-child(7) {
           width: 190px;
+        }
+
+        .employee-table th:nth-child(7) {
+          position: sticky;
+          right: 0;
+          z-index: 2;
+          background: #f8fafc;
+        }
+
+        .employee-table td:nth-child(7) {
+          position: sticky;
+          right: 0;
+          z-index: 1;
+          background: #fff;
         }
 
         .employee-id {
@@ -1390,9 +1413,9 @@ export default function Employees() {
             min-width: 850px;
           }
 
-          .employee-table th:nth-child(6),
-          .employee-table td:nth-child(6) {
-            width: 175px;
+          .employee-table th:nth-child(7),
+          .employee-table td:nth-child(7) {
+            width: 190px;
           }
 
           .employee-action-btn {
@@ -1436,10 +1459,21 @@ export default function Employees() {
           }
 
           .employee-table td[colspan],
-          .employee-table td:nth-child(2),
           .employee-table td:nth-child(3),
           .employee-table td:nth-child(4) {
             grid-column: 1 / -1;
+          }
+
+          .employee-table td:nth-child(2) {
+            grid-column: 1;
+            min-width: 0;
+          }
+
+          .employee-table td:nth-child(7) {
+            grid-column: 2;
+            grid-row: 1;
+            justify-self: end;
+            position: static;
           }
 
           .employee-table td:nth-child(3),
@@ -1738,6 +1772,20 @@ export default function Employees() {
                       {errors.designation}
                     </div>
                   )}
+                </div>
+
+                <div className="employee-field">
+                  <label className="employee-label">
+                    Department
+                  </label>
+
+                  <input
+                    name="department"
+                    value={form.department}
+                    onChange={handleChange}
+                    className={fieldClass('department')}
+                    placeholder="Engineering"
+                  />
                 </div>
 
                 <div className="employee-field">
@@ -2253,6 +2301,7 @@ export default function Employees() {
                 <th>Employee</th>
                 <th>Email</th>
                 <th>Designation</th>
+                <th>Department</th>
                 <th>Annual CTC</th>
                 <th>Actions</th>
               </tr>
@@ -2262,7 +2311,7 @@ export default function Employees() {
 
               {loading ? (
                 <tr>
-                  <td colSpan="6">
+                  <td colSpan="7">
 
                     <div className="employee-loading">
 
@@ -2276,7 +2325,7 @@ export default function Employees() {
                 </tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan="6">
+                  <td colSpan="7">
 
                     <div className="employee-empty">
 
@@ -2353,6 +2402,15 @@ export default function Employees() {
                           title={employee.designation || ''}
                         >
                           {employee.designation || '-'}
+                        </span>
+                      </td>
+
+                      <td>
+                        <span
+                          className="employee-designation"
+                          title={employee.department || ''}
+                        >
+                          {employee.department || '-'}
                         </span>
                       </td>
 

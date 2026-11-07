@@ -1436,7 +1436,7 @@ export default function Payroll() {
                 <div className="calc-list">
                   {displayPreview?.warnings?.map((warning) => <p key={warning} className="payroll-workflow-error" role="status">{warning}</p>)}
                   {displayPreview?.employed_days != null && <p className="payroll-policy-note">
-                    {displayPreview.employed_days} employment days · {displayPreview.calculation_snapshot?.unpaid_dates?.length ?? 0} unpaid leave days · {displayPreview.net_paid_days} paid days · {displayPreview.month_days} calendar days
+                    {displayPreview.employed_days} employment days · {displayPreview.unpaid_leave_days ?? displayPreview.calculation_snapshot?.unpaid_dates?.length ?? 0} unpaid leave days · {displayPreview.net_paid_days} paid days · {displayPreview.month_days} calendar days
                   </p>}
                   <div className="calc-row">
                     <span>Basic</span>

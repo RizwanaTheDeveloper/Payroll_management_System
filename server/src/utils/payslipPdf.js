@@ -711,6 +711,10 @@ module.exports = (res, p) => {
 
   const loanRecoveries = Array.isArray(p.advance_recoveries) ? p.advance_recoveries : [];
   const salaryAdvance = Math.round((num(p.advance) - loanRecoveries.reduce((sum, entry) => sum + num(entry.amount), 0)) * 100) / 100;
+  const unpaidLeaveDays = Array.isArray(p.calculation_snapshot?.unpaid_dates)
+    ? p.calculation_snapshot.unpaid_dates.length : null;
+  const lossOfPayLabel = unpaidLeaveDays == null
+    ? 'Loss Of Pay' : `Loss Of Pay (${unpaidLeaveDays} ${unpaidLeaveDays === 1 ? 'day' : 'days'})`;
   const deductions = [
     ...(num(p.late_login_deduction) > 0
       ? [['Late login (half day)', p.late_login_deduction]] : []),
@@ -728,7 +732,7 @@ module.exports = (res, p) => {
       : []),
     ...(p.unpaid_leave_deduction == null
       ? (num(p.deductions) > 0 ? [['Other / Loss Of Pay deductions', p.deductions]] : [])
-      : [['Loss Of Pay', p.unpaid_leave_deduction], ['Additional deductions', p.additional_deductions]].filter(([, value]) => num(value) > 0)),
+      : [[lossOfPayLabel, p.unpaid_leave_deduction], ['Additional deductions', p.additional_deductions]].filter(([, value]) => num(value) > 0)),
   ];
 
   const totalEarnings =
